@@ -8,7 +8,7 @@ export default function KokitosIndex() {
         Este es el menú inicial personalizado para el subdominio <strong>kokitos</strong>.
       </p>
 
-      <ConsultaInteractiva />
+      <Consulta Inteligente />
     </div>
   )
 }
