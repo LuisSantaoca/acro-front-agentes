@@ -9,11 +9,11 @@ export default function ConsultaInteractiva() {
         setCargando(true)
         try {
             const res = await fetch('https://n8n.acro.com.mx/webhook/consultas_agente_01'
-, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mensaje }),
-            })
+                , {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mensaje }),
+                })
 
             const data = await res.json()
             setRespuesta(data.respuesta || 'Sin respuesta')
@@ -26,7 +26,7 @@ export default function ConsultaInteractiva() {
 
     return (
         <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow text-black">
-            <h2 className="text-xl font-semibold mb-4">Consulta interactiva</h2>
+            <h2 className="text-xl font-semibold mb-4">Consulta inteligente</h2>
             <textarea
                 className="w-full border rounded p-2 mb-2 text-black"
                 rows={3}
