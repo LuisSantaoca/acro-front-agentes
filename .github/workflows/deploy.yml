@@ -32,5 +32,6 @@ jobs:
           host: agentes.acro.com.mx
           username: santaoca
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "dist/*"  # ← CORREGIDO: Copia solo el contenido de dist
+          source: "./dist/**"
+          strip_components: 1
           target: "/var/www/agentes"
