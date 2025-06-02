@@ -26,7 +26,7 @@ export default function ConsultaInteractiva() {
 
     return (
         <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow text-black">
-            <h2 className="text-xl font-semibold mb-4">Consulta inteligente 02</h2>
+            <h2 className="text-xl font-semibold mb-4">Consulta inteligente 03</h2>
             <textarea
                 className="w-full border rounded p-2 mb-2 text-black"
                 rows={3}
