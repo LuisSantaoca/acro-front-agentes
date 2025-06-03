@@ -1,39 +1,27 @@
-name: Deploy Frontend to Droplet
+name: Deploy to Droplet
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          node-version: 18
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build frontend
-        run: pnpm run build
-
-      - name: Deploy via SCP
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: agentes.acro.com.mx
-          username: santaoca
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./dist/**"
-          strip_components: 1
-          target: "/var/www/agentes"
-          rm: true
-
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@147.182.236.58 << 'EOF'
+            cd /var/www/agentes
+            git pull origin main
+            pnpm install
+            pnpm build
+          EOF
