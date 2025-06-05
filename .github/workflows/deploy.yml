@@ -1,4 +1,4 @@
-name: Deploy Frontend to fronts_agentes
+name: Deploy Frontend to fronts_acro_com_mx
 
 on:
   push:
@@ -35,12 +35,12 @@ jobs:
 
       - name: 📦 Backup Previous Build
         run: |
-          ssh santaoca@fronts_agentes 'if [ -d /var/www/agentes ]; then mv /var/www/agentes /var/www/agentes_backup_$(date +%Y%m%d%H%M%S); fi'
+          ssh santaoca@fronts.acro.com.mx 'if [ -d /var/www/agentes ]; then mv /var/www/agentes /var/www/agentes_backup_$(date +%Y%m%d%H%M%S); fi'
 
       - name: 🚀 Deploy New Build
         run: |
-          ssh santaoca@fronts_agentes 'mkdir -p /var/www/agentes'
-          rsync -avz --delete dist/ santaoca@fronts_agentes:/var/www/agentes
+          ssh santaoca@fronts.acro.com.mx 'mkdir -p /var/www/agentes'
+          rsync -avz --delete dist/ santaoca@fronts.acro.com.mx:/var/www/agentes
 
       - name: ✅ Notify Success
         if: success()
@@ -49,3 +49,4 @@ jobs:
       - name: ❌ Notify Failure
         if: failure()
         run: echo "❌ Deploy failed"
+
