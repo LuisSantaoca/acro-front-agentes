@@ -1,0 +1,43 @@
+:root {
+    /* === IDENTIDAD DE MARCA (frutas del bosque) === */
+    --color-primary: #8E2D6D;
+    /* Frambuesa profunda / uva */
+    --color-secondary: #6A1B4D;
+    /* Frambuesa más oscura (hover) */
+    --color-accent: #FFA726;
+    /* Naranja cálido (acciones secundarias) */
+
+    /* === BASE VISUAL === */
+    --color-background: #F9F9F6;
+    /* Fondo general (ligero, natural) */
+    --color-surface: #FFFFFF;
+    /* Cartas, inputs, tarjetas */
+    --color-text: #263238;
+    /* Texto base (neutral, oscuro) */
+    --color-muted: #7A7A7A;
+    /* Texto secundario o ayuda */
+    --color-border: #DADADA;
+    /* Líneas y contornos suaves */
+
+    /* === INPUTS === */
+    --input-bg: var(--color-surface);
+    --input-text: var(--color-text);
+    --input-placeholder: var(--color-muted);
+    --input-border: var(--color-border);
+
+    /* === BOTONES === */
+    --button-bg: var(--color-primary);
+    --button-text: #FFFFFF;
+    --button-hover-bg: var(--color-secondary);
+
+    /* === ALERTAS, ÉXITO, INFORMACIÓN === */
+    --accent-bg: var(--color-accent);
+    --accent-text: #FFFFFF;
+
+    /* === TEXTO SELECCIONADO === */
+    --selection-bg: var(--color-primary);
+    --selection-text: #FFFFFF;
+
+    /* === TIPOGRAFÍA BASE === */
+    --font-base: "Inter", system-ui, sans-serif;
+}

@@ -1,27 +1,32 @@
 import { useEffect, useState, Suspense } from 'react'
-import { getTenantConfig } from '@/config/tenants'
+import { getTenantFromHostname } from '@/config/tenants'
+import { TenantConfig } from '@/types/tenants'
 import TenantNotFound from './shared/TenantNotFound'
 
 const tenantModules = import.meta.glob('./tenants/*/index.tsx')
 
 export default function TenantIndex() {
-    const subdomain = window.location.hostname.split('.')[0]
     const [TenantApp, setTenantApp] = useState<React.ComponentType<any> | null>(null)
-    const [config, setConfig] = useState<any>(null)
+    const [config, setConfig] = useState<TenantConfig | null>(null)
 
     useEffect(() => {
+        const tenant = getTenantFromHostname()
+        if (!tenant) {
+            setTenantApp(() => () => <TenantNotFound tenant="desconocido" />)
+            return
+        }
+
+        const subdomain = tenant.tenantName.toLowerCase().split(' ')[0] // e.g. "kokitos"
         const path = `./tenants/${subdomain}/index.tsx`
         const loadTenant = tenantModules[path]
-        const configData = getTenantConfig(subdomain)
 
-        if (loadTenant && configData) {
-            setConfig(configData)
+        if (loadTenant) {
+            setConfig(tenant)
             loadTenant().then((mod) => setTenantApp(() => mod.default))
         } else {
-            // fallback a componente de error visual reutilizable
             setTenantApp(() => () => <TenantNotFound tenant={subdomain} />)
         }
-    }, [subdomain])
+    }, [])
 
     if (!TenantApp) {
         return (

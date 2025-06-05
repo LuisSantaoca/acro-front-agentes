@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
     Card, CardHeader, CardTitle, CardDescription,
     CardContent, CardFooter
@@ -8,6 +8,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { sendMessageToAgent } from '@/lib/chatService'
+import { Message } from '@/types/messages'
 
 type AgentChatProps = {
     agentName: string
@@ -16,21 +18,33 @@ type AgentChatProps = {
     fallback?: string
 }
 
-type Message = {
-    role: 'user' | 'agent'
-    content: string
-    isHtml?: boolean
-}
-
 export default function AgentChat({
     agentName,
     webhook,
     logo,
     fallback = 'IA',
 }: AgentChatProps) {
-    const [messages, setMessages] = useState<Message[]>([])
+    const storageKey = `agent_chat_history_${agentName}`
+    const [messages, setMessages] = useState<Message[]>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(storageKey)
+            return saved ? JSON.parse(saved) : []
+        }
+        return []
+    })
+
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    const bottomRef = useRef<HTMLDivElement>(null)
+
+    const scrollToBottom = () => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+
+    useEffect(() => {
+        scrollToBottom()
+        localStorage.setItem(storageKey, JSON.stringify(messages))
+    }, [messages])
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -42,41 +56,8 @@ export default function AgentChat({
         setLoading(true)
 
         try {
-            const res = await fetch(webhook, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mensaje: userMessage.content,
-                    agente: agentName,
-                }),
-            })
-
-            if (!res.ok) {
-                throw new Error(`Error HTTP: ${res.status}`)
-            }
-
-            const data = await res.json()
-
-            const content =
-                data.formattedText?.toString().trim() ||
-                data.respuesta?.toString().trim() ||
-                null
-
-            if (!content) {
-                console.warn('Respuesta inesperada del servidor:', data)
-                setMessages(prev => [
-                    ...prev,
-                    { role: 'agent', content: '⚠️ Sin respuesta del agente' }
-                ])
-            } else {
-                const agentMessage: Message = {
-                    role: 'agent',
-                    content,
-                    isHtml: !!data.formattedText,
-                }
-                setMessages(prev => [...prev, agentMessage])
-            }
-
+            const agentMessage = await sendMessageToAgent(webhook, userMessage, agentName)
+            setMessages(prev => [...prev, agentMessage])
         } catch (err) {
             console.error('Error al contactar con el agente:', err)
             setMessages(prev => [
@@ -89,7 +70,7 @@ export default function AgentChat({
     }
 
     return (
-        <Card className="max-w-xl mx-auto shadow">
+        <Card className="chat-width shadow bg-background text-text">
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <Avatar>
@@ -111,7 +92,7 @@ export default function AgentChat({
                     >
                         <div
                             className={`inline-block px-4 py-2 rounded-lg max-w-xs ${msg.role === 'user'
-                                    ? 'bg-blue-500 text-white'
+                                    ? 'bg-primary text-white'
                                     : 'bg-gray-100 text-gray-900'
                                 }`}
                             {...(msg.isHtml
@@ -120,11 +101,12 @@ export default function AgentChat({
                         />
                     </div>
                 ))}
+
                 {loading && (
-                    <div className="text-sm text-gray-400 italic">
-                        El asistente está pensando…
-                    </div>
+                    <div className="text-sm text-gray-400 italic">El asistente está pensando…</div>
                 )}
+
+                <div ref={bottomRef} />
             </CardContent>
 
             <CardFooter>
@@ -133,9 +115,13 @@ export default function AgentChat({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Escribe tu mensaje…"
-                        className="flex-1"
+                        className="flex-1 input-style"
                     />
-                    <Button type="submit" disabled={loading}>
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        className="button-style"
+                    >
                         Enviar
                     </Button>
                 </form>
@@ -143,3 +129,4 @@ export default function AgentChat({
         </Card>
     )
 }
+

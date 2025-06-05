@@ -1,0 +1,41 @@
+@tailwind utilities;
+
+@layer utilities {
+
+    /* === LAYOUT GENERAL === */
+    .container-layout {
+        @apply min-h-screen px-4 sm:px-6 lg:px-8 bg-[var(--color-background)] text-[var(--color-text)] font-sans;
+    }
+
+    /* === ANCHOS RESPONSIVOS PARA BLOQUES CENTRALES (ej. chat) === */
+    .chat-width {
+        @apply w-full max-w-xl sm:max-w-2xl lg:max-w-3xl mx-auto;
+    }
+
+    /* === ESPACIADO DE SECCIONES === */
+    .section-spacing {
+        @apply mb-6 pb-6 sm:pb-8 lg:pb-10;
+    }
+
+    /* === ESTILOS DE HEADER CON JERARQUÍA SUAVE === */
+    .header-title {
+        @apply text-4xl font-bold text-[var(--color-text)];
+    }
+
+    .header-subtitle {
+        @apply text-base text-[var(--color-muted)] italic;
+    }
+
+    .header-divider {
+        @apply border-b border-[var(--color-border)] pb-6;
+    }
+
+    /* === FORMULARIOS (opcional) === */
+    .input-style {
+        @apply bg-[var(--input-bg)] text-[var(--input-text)] border border-[var(--input-border)] placeholder-[var(--input-placeholder)];
+    }
+
+    .button-style {
+        @apply bg-[var(--button-bg)] text-[var(--button-text)] hover:bg-[var(--button-hover-bg)] transition-colors;
+    }
+}

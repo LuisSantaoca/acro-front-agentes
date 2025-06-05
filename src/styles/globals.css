@@ -1,0 +1,44 @@
+@import './themes/kokitos.css';
+/* Cambia a './themes/motas.css' cuando escales */
+@import './utilities.css';
+/* Utilidades personalizadas de layout, espaciado, etc. */
+
+/* ====== GLOBAL RESET Y CONFIG ====== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-base);
+    background-color: var(--color-background);
+    color: var(--color-text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100%;
+}
+
+/* ====== SELECCIÓN DE TEXTO ====== */
+::selection {
+    background: var(--selection-bg);
+    color: var(--selection-text);
+}
+
+/* ====== SCROLLBARS (personalizado pero sobrio) ====== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
