@@ -46,10 +46,16 @@ export default function AgentChat({
             const res = await fetch(webhook, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mensaje: userMessage.content }),
+                body: JSON.stringify({
+                    mensaje: userMessage.content,
+                    agente: agentName,
+                }),
             })
             const data = await res.json()
-            const agentMessage: Message = { role: 'agent', content: data.respuesta || 'Sin respuesta' }
+            const agentMessage: Message = {
+                role: 'agent',
+                content: data.respuesta || 'Sin respuesta',
+            }
             setMessages((prev) => [...prev, agentMessage])
         } catch {
             setMessages((prev) => [
@@ -71,14 +77,19 @@ export default function AgentChat({
                     </Avatar>
                     <div>
                         <CardTitle>{agentName}</CardTitle>
-                        <CardDescription>Tu asistente está listo para ayudarte</CardDescription>
+                        <CardDescription>
+                            Tu asistente está listo para ayudarte
+                        </CardDescription>
                     </div>
                 </div>
             </CardHeader>
 
             <CardContent className="h-80 overflow-y-auto space-y-2">
                 {messages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                        key={i}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
                         <div
                             className={`inline-block px-4 py-2 rounded-lg max-w-xs ${msg.role === 'user'
                                     ? 'bg-blue-500 text-white'
@@ -89,7 +100,11 @@ export default function AgentChat({
                         </div>
                     </div>
                 ))}
-                {loading && <div className="text-sm text-gray-400 italic">El asistente está pensando…</div>}
+                {loading && (
+                    <div className="text-sm text-gray-400 italic">
+                        El asistente está pensando…
+                    </div>
+                )}
             </CardContent>
 
             <CardFooter>
@@ -100,7 +115,9 @@ export default function AgentChat({
                         placeholder="Escribe tu mensaje…"
                         className="flex-1"
                     />
-                    <Button type="submit" disabled={loading}>Enviar</Button>
+                    <Button type="submit" disabled={loading}>
+                        Enviar
+                    </Button>
                 </form>
             </CardFooter>
         </Card>

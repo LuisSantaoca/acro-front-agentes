@@ -1,35 +1,40 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { getTenantConfig } from '@/config/tenants'
+import TenantNotFound from './shared/TenantNotFound'
 
-const tenants: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
-    kokitos: () => import('./tenants/kokitos'),
-    // Agrega más tenants aquí si los tienes
-}
+const tenantModules = import.meta.glob('./tenants/*/index.tsx')
 
 export default function TenantIndex() {
     const subdomain = window.location.hostname.split('.')[0]
-    const [Component, setComponent] = useState<React.ComponentType<any> | null>(null)
+    const [TenantApp, setTenantApp] = useState<React.ComponentType<any> | null>(null)
     const [config, setConfig] = useState<any>(null)
 
     useEffect(() => {
-        const loadComponent = tenants[subdomain]
+        const path = `./tenants/${subdomain}/index.tsx`
+        const loadTenant = tenantModules[path]
         const configData = getTenantConfig(subdomain)
 
-        if (loadComponent && configData) {
+        if (loadTenant && configData) {
             setConfig(configData)
-            loadComponent().then(mod => setComponent(() => mod.default))
+            loadTenant().then((mod) => setTenantApp(() => mod.default))
         } else {
-            setComponent(() => () => (
-                <div className="min-h-screen flex items-center justify-center bg-red-100 text-red-800 text-xl font-bold">
-                    Tenant "{subdomain}" no encontrado o sin configuración
-                </div>
-            ))
+            // fallback a componente de error visual reutilizable
+            setTenantApp(() => () => <TenantNotFound tenant={subdomain} />)
         }
     }, [subdomain])
 
-    if (!Component) {
-        return <div className="min-h-screen flex items-center justify-center text-gray-500">Cargando interfaz...</div>
+    if (!TenantApp) {
+        return (
+            <div className="min-h-screen flex items-center justify-center text-gray-500">
+                Cargando interfaz...
+            </div>
+        )
     }
 
-    return <Component config={config} />
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Cargando módulo...</div>}>
+            <TenantApp config={config} />
+        </Suspense>
+    )
 }
+
