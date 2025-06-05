@@ -1,11 +1,9 @@
+'use client'
+
 import { useState } from 'react'
 import {
-    Card,
-    CardHeader,
-    CardTitle,
-    CardDescription,
-    CardContent,
-    CardFooter
+    Card, CardHeader, CardTitle, CardDescription,
+    CardContent, CardFooter
 } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
@@ -21,6 +19,7 @@ type AgentChatProps = {
 type Message = {
     role: 'user' | 'agent'
     content: string
+    isHtml?: boolean
 }
 
 export default function AgentChat({
@@ -38,7 +37,7 @@ export default function AgentChat({
         if (!input.trim()) return
 
         const userMessage: Message = { role: 'user', content: input }
-        setMessages((prev) => [...prev, userMessage])
+        setMessages(prev => [...prev, userMessage])
         setInput('')
         setLoading(true)
 
@@ -51,14 +50,36 @@ export default function AgentChat({
                     agente: agentName,
                 }),
             })
-            const data = await res.json()
-            const agentMessage: Message = {
-                role: 'agent',
-                content: data.respuesta || 'Sin respuesta',
+
+            if (!res.ok) {
+                throw new Error(`Error HTTP: ${res.status}`)
             }
-            setMessages((prev) => [...prev, agentMessage])
-        } catch {
-            setMessages((prev) => [
+
+            const data = await res.json()
+
+            const content =
+                data.formattedText?.toString().trim() ||
+                data.respuesta?.toString().trim() ||
+                null
+
+            if (!content) {
+                console.warn('Respuesta inesperada del servidor:', data)
+                setMessages(prev => [
+                    ...prev,
+                    { role: 'agent', content: '⚠️ Sin respuesta del agente' }
+                ])
+            } else {
+                const agentMessage: Message = {
+                    role: 'agent',
+                    content,
+                    isHtml: !!data.formattedText,
+                }
+                setMessages(prev => [...prev, agentMessage])
+            }
+
+        } catch (err) {
+            console.error('Error al contactar con el agente:', err)
+            setMessages(prev => [
                 ...prev,
                 { role: 'agent', content: '⚠️ Error al conectar con el asistente' },
             ])
@@ -77,9 +98,7 @@ export default function AgentChat({
                     </Avatar>
                     <div>
                         <CardTitle>{agentName}</CardTitle>
-                        <CardDescription>
-                            Tu asistente está listo para ayudarte
-                        </CardDescription>
+                        <CardDescription>Tu asistente está listo para ayudarte</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -95,9 +114,10 @@ export default function AgentChat({
                                     ? 'bg-blue-500 text-white'
                                     : 'bg-gray-100 text-gray-900'
                                 }`}
-                        >
-                            {msg.content}
-                        </div>
+                            {...(msg.isHtml
+                                ? { dangerouslySetInnerHTML: { __html: msg.content } }
+                                : { children: msg.content })}
+                        />
                     </div>
                 ))}
                 {loading && (
