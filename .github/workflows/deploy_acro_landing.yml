@@ -1,0 +1,52 @@
+name: Deploy Acro Landing (acro.com.mx)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy-acro:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node & pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: 🧪 Install Dependencies
+        run: pnpm install
+
+      - name: 🛠️ Build Acro Landing
+        run: pnpm run build
+
+      - name: 🔐 Add SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: 📦 Backup Previous Landing Build
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/acro_landing ]; then mv /var/www/acro_landing /var/www/acro_landing_backup_$(date +%Y%m%d%H%M%S); fi'
+
+      - name: 🚀 Deploy New Acro Landing
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/acro_landing'
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/acro_landing
+
+      - name: ✅ Notify Success
+        if: success()
+        run: echo "✅ Acro landing deploy successful"
+
+      - name: ❌ Notify Failure
+        if: failure()
+        run: echo "❌ Acro landing deploy failed"
