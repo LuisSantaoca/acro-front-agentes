@@ -7,7 +7,7 @@ export default function AppRouter() {
   return (
     <Router>
       <Routes>
-        <Route path="/landing" element={<LandingInstitucional />} />
+        <Route path="/" element={<LandingInstitucional />} />
         <Route path="*" element={<TenantIndex />} />
       </Routes>
     </Router>
