@@ -42,3 +42,13 @@ body {
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
+/* ====== LANDING INSTITUCIONAL Y CHATBOT ====== */
+/* Nuevos estilos específicos claramente identificados para no generar conflictos */
+.landing-container {
+    @apply flex flex-col items-center justify-center min-h-screen py-8 px-4;
+}
+
+.chatbot-container {
+    @apply w-full max-w-lg mt-6 p-4 bg-gray-100 rounded-lg shadow-md;
+}
