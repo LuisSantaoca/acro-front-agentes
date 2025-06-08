@@ -1,7 +1,8 @@
-@import './themes/kokitos.css';
-/* Cambia a './themes/motas.css' cuando escales */
-@import './utilities.css';
 /* Utilidades personalizadas de layout, espaciado, etc. */
+@import './utilities.css';
+
+/* Tema predeterminado: Landing Institucional (puede ser cambiado dinámicamente según tenant) */
+@import './themes/landing.css';
 
 /* ====== GLOBAL RESET Y CONFIG ====== */
 *,
@@ -25,17 +26,17 @@ body {
 
 /* ====== SELECCIÓN DE TEXTO ====== */
 ::selection {
-    background: var(--selection-bg);
-    color: var(--selection-text);
+    background: var(--selection-bg, rgba(45, 106, 79, 0.2));
+    color: var(--selection-text, var(--color-text));
 }
 
-/* ====== SCROLLBARS (personalizado pero sobrio) ====== */
+/* ====== SCROLLBARS (personalizado y discreto) ====== */
 ::-webkit-scrollbar {
     width: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: var(--color-border);
+    background-color: var(--color-secondary, #1B4965);
     border-radius: 4px;
 }
 
@@ -44,11 +45,11 @@ body {
 }
 
 /* ====== LANDING INSTITUCIONAL Y CHATBOT ====== */
-/* Nuevos estilos específicos claramente identificados para no generar conflictos */
 .landing-container {
     @apply flex flex-col items-center justify-center min-h-screen py-8 px-4;
 }
 
 .chatbot-container {
-    @apply w-full max-w-lg mt-6 p-4 bg-gray-100 rounded-lg shadow-md;
+    @apply w-full max-w-lg mt-6 p-4 rounded-lg shadow-md;
+    background-color: var(--chatbot-ai-message-bg, #E3F2FD);
 }

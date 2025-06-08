@@ -1,0 +1,33 @@
+/* Tema visual específico para Landing Institucional (Agricultura-Tech) */
+
+:root {
+    /* Colores primarios (campo agrícola, cielo California) */
+    --color-primary: #2D6A4F;
+    /* Verde terroso (natural) */
+    --color-secondary: #1B4965;
+    /* Azul profundo (tecnología/cielo) */
+
+    /* Colores de acento (berries frescas: fresas, frambuesas) */
+    --color-accent: #C1121F;
+    /* Rojo vibrante */
+
+    /* Colores neutros (fondo y texto) */
+    --color-background: #FFFFFF;
+    /* Blanco claro */
+    --color-text: #333333;
+    /* Gris oscuro para textos */
+
+    /* Colores adicionales para estados de UI específicos */
+    --color-success: #38A169;
+    /* Éxito (verde claro) */
+    --color-warning: #DD6B20;
+    /* Advertencia (naranja cálido) */
+    --color-danger: #E53E3E;
+    /* Peligro/Error (rojo) */
+
+    /* Colores para interfaz del chatbot */
+    --chatbot-user-message-bg: #E8F5E9;
+    /* Fondo mensajes del usuario */
+    --chatbot-ai-message-bg: #E3F2FD;
+    /* Fondo mensajes chatbot (IA) */
+}
