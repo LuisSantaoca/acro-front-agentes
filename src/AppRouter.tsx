@@ -1,15 +1,16 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import TenantIndex from './pages/TenantIndex';
-import LandingInstitucional from './pages/LandingInstitucional/ui/LandingInstitucional';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import TenantIndex from './pages/TenantIndex'
+import ProtectedLanding from './pages/PruebasAcro/ProtectedLanding'
 
 // ====== ROUTER PRINCIPAL ======
 export default function AppRouter() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingInstitucional />} />
+        <Route path="/" element={<ProtectedLanding />} />
+        <Route path="/landing" element={<TenantIndex />} />
         <Route path="*" element={<TenantIndex />} />
       </Routes>
     </Router>
-  );
+  )
 }
