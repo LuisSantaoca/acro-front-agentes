@@ -25,6 +25,7 @@ export default function AgentChat({
     fallback = 'IA',
 }: AgentChatProps) {
     const storageKey = `agent_chat_history_${agentName}`
+
     const [messages, setMessages] = useState<Message[]>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(storageKey)
@@ -35,10 +36,13 @@ export default function AgentChat({
 
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
-    const bottomRef = useRef<HTMLDivElement>(null)
+
+    const chatContainerRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+        }
     }
 
     useEffect(() => {
@@ -84,7 +88,10 @@ export default function AgentChat({
                 </div>
             </CardHeader>
 
-            <CardContent className="h-80 overflow-y-auto space-y-2">
+            <CardContent
+                ref={chatContainerRef}
+                className="h-80 overflow-y-auto space-y-2"
+            >
                 {messages.map((msg, i) => (
                     <div
                         key={i}
@@ -92,8 +99,8 @@ export default function AgentChat({
                     >
                         <div
                             className={`inline-block px-4 py-2 rounded-lg max-w-xs ${msg.role === 'user'
-                                    ? 'bg-primary text-white'
-                                    : 'bg-gray-100 text-gray-900'
+                                ? 'bg-primary text-white'
+                                : 'bg-gray-100 text-gray-900'
                                 }`}
                             {...(msg.isHtml
                                 ? { dangerouslySetInnerHTML: { __html: msg.content } }
@@ -105,8 +112,6 @@ export default function AgentChat({
                 {loading && (
                     <div className="text-sm text-gray-400 italic">El asistente está pensando…</div>
                 )}
-
-                <div ref={bottomRef} />
             </CardContent>
 
             <CardFooter>
@@ -129,4 +134,3 @@ export default function AgentChat({
         </Card>
     )
 }
-
