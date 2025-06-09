@@ -1,33 +1,33 @@
-/* Tema visual específico para Landing Institucional (Agricultura-Tech) */
+/* Tema visual específico para Landing Institucional (Acro - Agricultura-Tech) */
 
 :root {
-    /* Colores primarios (campo agrícola, cielo California) */
-    --color-primary: #2D6A4F;
-    /* Verde terroso (natural) */
-    --color-secondary: #1B4965;
-    /* Azul profundo (tecnología/cielo) */
+    /* Colores primarios institucionales (paleta Acro1) */
+    --color-primary: #0F1780;
+    /* Azul institucional profundo */
+    --color-secondary: #2B7EF3;
+    /* Azul secundario brillante */
 
-    /* Colores de acento (berries frescas: fresas, frambuesas) */
-    --color-accent: #C1121F;
-    /* Rojo vibrante */
-
-    /* Colores neutros (fondo y texto) */
+    /* Colores neutros institucionales */
     --color-background: #FFFFFF;
-    /* Blanco claro */
-    --color-text: #333333;
-    /* Gris oscuro para textos */
+    /* Blanco institucional */
+    --color-text: #08090C;
+    /* Negro intenso para textos principales */
 
-    /* Colores adicionales para estados de UI específicos */
+    /* Colores complementarios institucionales */
+    --color-neutral: #766B71;
+    /* Gris neutro para elementos complementarios */
+
+    /* Colores adicionales para estados específicos de la interfaz */
     --color-success: #38A169;
-    /* Éxito (verde claro) */
+    /* Verde claro para éxito */
     --color-warning: #DD6B20;
-    /* Advertencia (naranja cálido) */
+    /* Naranja cálido para advertencia */
     --color-danger: #E53E3E;
-    /* Peligro/Error (rojo) */
+    /* Rojo intenso para errores */
 
-    /* Colores para interfaz del chatbot */
+    /* Colores específicos para interfaz del chatbot */
     --chatbot-user-message-bg: #E8F5E9;
-    /* Fondo mensajes del usuario */
+    /* Fondo mensajes usuario */
     --chatbot-ai-message-bg: #E3F2FD;
     /* Fondo mensajes chatbot (IA) */
 }
