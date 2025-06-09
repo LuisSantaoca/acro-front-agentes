@@ -1,0 +1,109 @@
+.
+├── .env
+├── .env.example
+├── .github
+│   └── workflows
+│       ├── deploy-pruebas.yml
+│       └── deploy.yml
+├── .gitignore
+├── .vscode
+│   └── settings.json
+├── README.md
+├── components.json
+├── docs
+│   ├── arquitectura
+│   ├── guias_de_implementacion
+│   │   ├── guia_implementacion_para_ia.pdf
+│   │   ├── guia_implementacion_para_ia.pdf:Zone.Identifier
+│   │   ├── guia_implementacion_para_ia_02.pdf
+│   │   └── guia_implementacion_para_ia_02.pdf:Zone.Identifier
+│   ├── manuales_usuario
+│   ├── project_charter
+│   │   └── versiones
+│   ├── referencias
+│   ├── reuniones
+│   └── ux_ui
+├── eslint.config.js
+├── estructura_proyecto.txt
+├── index.html
+├── package.json
+├── pnpm-lock.yaml
+├── postcss.config.cjs
+├── public
+│   ├── assets
+│   │   └── logos
+│   │       └── logo-kokitos.svg
+│   └── vite.svg
+├── src
+│   ├── App.css
+│   ├── App.tsx
+│   ├── AppRouter.tsx
+│   ├── assets
+│   │   └── react.svg
+│   ├── components
+│   │   ├── agents
+│   │   │   └── AgentChat.tsx
+│   │   └── ui
+│   │       ├── avatar.tsx
+│   │       ├── button.tsx
+│   │       ├── card.tsx
+│   │       └── input.tsx
+│   ├── config
+│   │   └── tenants
+│   │       ├── index.ts
+│   │       ├── kokitos.ts
+│   │       ├── kokitosTheme.ts
+│   │       ├── landing.ts
+│   │       └── motas.ts
+│   ├── index.css
+│   ├── lib
+│   │   ├── chatService.ts
+│   │   └── utils.ts
+│   ├── main.tsx
+│   ├── pages
+│   │   ├── LandingInstitucional
+│   │   │   ├── assets
+│   │   │   ├── index.ts
+│   │   │   └── ui
+│   │   │       ├── LandingInstitucional.tsx
+│   │   │       └── elementos
+│   │   ├── PruebasAcro
+│   │   │   └── ProtectedLanding.tsx
+│   │   ├── TenantIndex.tsx
+│   │   ├── shared
+│   │   │   ├── NotFound.tsx
+│   │   │   ├── TenantLayout.tsx
+│   │   │   └── TenantNotFound.tsx
+│   │   └── tenants
+│   │       ├── kokitos
+│   │       │   ├── ConsultaInteractiva.tsx
+│   │       │   ├── asistente
+│   │       │   │   └── index.tsx
+│   │       │   ├── configuracion
+│   │       │   │   └── index.tsx
+│   │       │   └── index.tsx
+│   │       └── motas
+│   │           └── index.tsx
+│   ├── stores
+│   │   └── useUserStore.ts
+│   ├── styles
+│   │   ├── globals.css
+│   │   ├── themes
+│   │   │   ├── kokitos.css
+│   │   │   ├── landing.css
+│   │   │   └── motas.css
+│   │   └── utilities.css
+│   ├── themes
+│   │   └── tailwind
+│   │       └── generateThemes.ts
+│   ├── types
+│   │   └── tenants.ts
+│   └── vite-env.d.ts
+├── tailwind.config.js
+├── tailwind.config.ts
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
+
+42 directories, 65 files
