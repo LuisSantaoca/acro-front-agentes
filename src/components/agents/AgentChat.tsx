@@ -5,23 +5,22 @@ import {
     Card, CardHeader, CardTitle, CardDescription,
     CardContent, CardFooter
 } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { sendMessageToAgent } from '@/lib/chatService'
 import { Message } from '@/types/messages'
+import { Bot } from 'lucide-react'
 
 type AgentChatProps = {
     agentName: string
     webhook: string
-    logo: string
     fallback?: string
 }
 
 export default function AgentChat({
     agentName,
     webhook,
-    logo,
     fallback = 'IA',
 }: AgentChatProps) {
     const storageKey = `agent_chat_history_${agentName}`
@@ -78,8 +77,9 @@ export default function AgentChat({
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <Avatar>
-                        <AvatarImage src={logo} />
-                        <AvatarFallback>{fallback}</AvatarFallback>
+                        <AvatarFallback className="bg-gray-100">
+                            <Bot className="w-6 h-6 text-indigo-500" />
+                        </AvatarFallback>
                     </Avatar>
                     <div>
                         <CardTitle>{agentName}</CardTitle>
