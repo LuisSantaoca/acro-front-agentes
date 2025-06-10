@@ -18,24 +18,27 @@ type AgentChatProps = {
     fallback?: string
 }
 
+// INICIO COMPONENTE AgentChat: Componente principal para interacción del chat
 export default function AgentChat({
     agentName,
     webhook,
     fallback = 'IA',
 }: AgentChatProps) {
+
+    // INICIO BLOQUE: Define clave para almacenamiento local específico del agente
     const storageKey = `agent_chat_history_${agentName}`
+    // FIN BLOQUE
 
-    const [messages, setMessages] = useState<Message[]>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem(storageKey)
-            return saved ? JSON.parse(saved) : []
-        }
-        return []
-    })
+    // INICIO BLOQUE: Estado para mensajes del chat
+    const [messages, setMessages] = useState<Message[]>([])
+    // FIN BLOQUE
 
+    // INICIO BLOQUE: Estados para manejo del input y estado de carga
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    // FIN BLOQUE
 
+    // INICIO BLOQUE: Referencia para controlar desplazamiento automático al último mensaje
     const chatContainerRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -43,12 +46,31 @@ export default function AgentChat({
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
         }
     }
+    // FIN BLOQUE
 
+    // INICIO BLOQUE: Carga inicial de mensajes desde localStorage y mensajes automáticos iniciales
+    useEffect(() => {
+        const saved = localStorage.getItem(storageKey)
+        if (saved) {
+            setMessages(JSON.parse(saved))
+            setMessages(prev => [
+                ...prev,
+                { role: 'agent', content: '👋 ¡Qué bueno que estás de nuevo! ¿Quieres información del sector 5?' }
+            ])
+        } else {
+            setMessages([{ role: 'agent', content: '👋 Bienvenido, ¿en qué te puedo ayudar?' }])
+        }
+    }, [])
+    // FIN BLOQUE
+
+    // INICIO BLOQUE: Efecto para guardar mensajes en localStorage y desplazamiento automático al cambiar mensajes
     useEffect(() => {
         scrollToBottom()
         localStorage.setItem(storageKey, JSON.stringify(messages))
     }, [messages])
+    // FIN BLOQUE
 
+    // INICIO BLOQUE: Función para manejo del envío de mensajes del usuario
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!input.trim()) return
@@ -71,9 +93,12 @@ export default function AgentChat({
             setLoading(false)
         }
     }
+    // FIN BLOQUE
 
+    // INICIO BLOQUE: Renderización visual del chat (UI)
     return (
         <Card className="chat-width shadow bg-background text-text">
+            {/* INICIO CABECERA DEL CHAT: Avatar y título */}
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <Avatar>
@@ -87,7 +112,9 @@ export default function AgentChat({
                     </div>
                 </div>
             </CardHeader>
+            {/* FIN CABECERA DEL CHAT */}
 
+            {/* INICIO ÁREA DE MENSAJES: Mensajes intercambiados entre usuario y agente */}
             <CardContent
                 ref={chatContainerRef}
                 className="h-80 overflow-y-auto space-y-2"
@@ -113,7 +140,9 @@ export default function AgentChat({
                     <div className="text-sm text-gray-400 italic">El asistente está pensando…</div>
                 )}
             </CardContent>
+            {/* FIN ÁREA DE MENSAJES */}
 
+            {/* INICIO FORMULARIO DE ENTRADA: Para enviar mensajes */}
             <CardFooter>
                 <form onSubmit={handleSend} className="w-full flex gap-2">
                     <Input
@@ -131,6 +160,9 @@ export default function AgentChat({
                     </Button>
                 </form>
             </CardFooter>
+            {/* FIN FORMULARIO DE ENTRADA */}
         </Card>
     )
+    // FIN BLOQUE: Renderización visual
 }
+// FIN COMPONENTE AgentChat
