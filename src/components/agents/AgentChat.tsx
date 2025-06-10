@@ -8,37 +8,20 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { sendMessageToAgent } from '@/lib/chatService'
 import { Message } from '@/types/messages'
 import { Bot } from 'lucide-react'
 
 type AgentChatProps = {
     agentName: string
-    webhook: string
-    fallback?: string
 }
 
-// INICIO COMPONENTE AgentChat: Componente principal para interacción del chat
 export default function AgentChat({
     agentName,
-    webhook,
-    fallback = 'IA',
 }: AgentChatProps) {
 
-    // INICIO BLOQUE: Define clave para almacenamiento local específico del agente
-    const storageKey = `agent_chat_history_${agentName}`
-    // FIN BLOQUE
-
-    // INICIO BLOQUE: Estado para mensajes del chat
     const [messages, setMessages] = useState<Message[]>([])
-    // FIN BLOQUE
-
-    // INICIO BLOQUE: Estados para manejo del input y estado de carga
-    const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
-    // FIN BLOQUE
-
-    // INICIO BLOQUE: Referencia para controlar desplazamiento automático al último mensaje
+    const [input, setInput] = useState('')
     const chatContainerRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -46,59 +29,99 @@ export default function AgentChat({
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
         }
     }
-    // FIN BLOQUE
 
-    // INICIO BLOQUE: Carga inicial de mensajes desde localStorage y mensajes automáticos iniciales
-    useEffect(() => {
-        const saved = localStorage.getItem(storageKey)
-        if (saved) {
-            setMessages(JSON.parse(saved))
-            setMessages(prev => [
-                ...prev,
-                { role: 'agent', content: '👋 ¡Qué bueno que estás de nuevo! ¿Quieres información del sector 5?' }
-            ])
-        } else {
-            setMessages([{ role: 'agent', content: '👋 Bienvenido, ¿en qué te puedo ayudar?' }])
-        }
-    }, [])
-    // FIN BLOQUE
-
-    // INICIO BLOQUE: Efecto para guardar mensajes en localStorage y desplazamiento automático al cambiar mensajes
     useEffect(() => {
         scrollToBottom()
-        localStorage.setItem(storageKey, JSON.stringify(messages))
     }, [messages])
+
+    // INICIO BLOQUE: EFECTO DE SIMULACIÓN CON LA NUEVA CONVERSACIÓN
+    useEffect(() => {
+        let isMounted = true;
+        const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+        const runSimulation = async () => {
+            while (isMounted) {
+                // --- INICIO DE LA NUEVA SECUENCIA DE CONVERSACIÓN ---
+
+                // 1. Limpiar e iniciar ciclo
+                if (!isMounted) break;
+                setMessages([]);
+                await delay(1500);
+
+                // 2. Chat: Saludo inicial
+                if (!isMounted) break;
+                setMessages([{ role: 'agent', content: 'Buenos dias Jorge, que información de tus ranchos necesitas conocer hoy:' }]);
+                await delay(3000);
+
+                // 3. Jorge: Pide reporte
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'user', content: 'Enviame el reporte de trips del Rancho La Rosita.' }]);
+                await delay(2500);
+
+                // 4. Chat: Pregunta por el sector
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'agent', content: 'De que sector.' }]);
+                await delay(2000);
+
+                // 5. Jorge: Especifica el sector
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'user', content: 'Del sector 4' }]);
+                setLoading(true); // El asistente empieza a trabajar
+                await delay(2500);
+
+                // 6. Chat: Confirma y prepara
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'agent', content: 'Preparo el reporte del sector 4.' }]);
+                await delay(3000);
+
+                // 7. Chat: Entrega el resumen de riesgo
+                if (!isMounted) break;
+                setLoading(false); // El asistente termina de pensar
+                setMessages(prev => [...prev, { role: 'agent', content: 'Basado en los datos, el nivel de riesgo actual es alto debido a los altos porcentajes de condiciones óptimas y la alta cantidad de grados-día acumulados. Las condiciones son suficientes para mantener poblaciones activas, y el crecimiento podría ser más rápido dada la superposición generacional.' }]);
+                await delay(7000); // Pausa larga para leer el resumen
+
+                // 8. Jorge: Pide datos específicos
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'user', content: 'Dame los datos especificos.' }]);
+                setLoading(true); // El asistente busca los datos
+                await delay(2500);
+
+                // 9. Chat: Entrega los datos punto por punto
+                if (!isMounted) break;
+                setLoading(false);
+                setMessages(prev => [...prev, { role: 'agent', content: '- Grados-día acumulados (últimos 45 días): 679.413 GD. Esto indica que se han completado aproximadamente 3.2 generaciones del trips, lo que sugiere una presión poblacional significativa debido a la superposición de generaciones.' }]);
+                await delay(5000);
+
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'agent', content: '- Porcentaje del tiempo con temperatura óptima (últimos 14 días): 23.95%.' }]);
+                await delay(4000);
+                
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'agent', content: '- Porcentaje del tiempo con humedad relativa óptima (últimos 14 días): 25.93%' }]);
+                await delay(4000);
+
+                if (!isMounted) break;
+                setMessages(prev => [...prev, { role: 'agent', content: '- Temperatura y Humedad Relativa: Los porcentajes de 23.95% para temperatura y 25.93% para humedad relativa son altamente favorables, permitiendo un crecimiento rápido de las poblaciones del trips.' }]);
+                
+                // Pausa final antes de reiniciar la simulación
+                await delay(10000);
+            }
+        };
+
+        runSimulation();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
     // FIN BLOQUE
 
-    // INICIO BLOQUE: Función para manejo del envío de mensajes del usuario
     const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!input.trim()) return
+        e.preventDefault();
+    };
 
-        const userMessage: Message = { role: 'user', content: input }
-        setMessages(prev => [...prev, userMessage])
-        setInput('')
-        setLoading(true)
-
-        try {
-            const agentMessage = await sendMessageToAgent(webhook, userMessage, agentName)
-            setMessages(prev => [...prev, agentMessage])
-        } catch (err) {
-            console.error('Error al contactar con el agente:', err)
-            setMessages(prev => [
-                ...prev,
-                { role: 'agent', content: '⚠️ Error al conectar con el asistente' },
-            ])
-        } finally {
-            setLoading(false)
-        }
-    }
-    // FIN BLOQUE
-
-    // INICIO BLOQUE: Renderización visual del chat (UI)
     return (
         <Card className="chat-width shadow bg-background text-text">
-            {/* INICIO CABECERA DEL CHAT: Avatar y título */}
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <Avatar>
@@ -108,13 +131,11 @@ export default function AgentChat({
                     </Avatar>
                     <div>
                         <CardTitle>{agentName}</CardTitle>
-                        <CardDescription>Tu asistente está listo para ayudarte</CardDescription>
+                        <CardDescription>Asistente para el Rancho La Rosita</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            {/* FIN CABECERA DEL CHAT */}
 
-            {/* INICIO ÁREA DE MENSAJES: Mensajes intercambiados entre usuario y agente */}
             <CardContent
                 ref={chatContainerRef}
                 className="h-80 overflow-y-auto space-y-2"
@@ -128,41 +149,35 @@ export default function AgentChat({
                             className={`inline-block px-4 py-2 rounded-lg max-w-xs ${msg.role === 'user'
                                 ? 'bg-primary text-white'
                                 : 'bg-gray-100 text-gray-900'
-                                }`}
-                            {...(msg.isHtml
-                                ? { dangerouslySetInnerHTML: { __html: msg.content } }
-                                : { children: msg.content })}
-                        />
+                            }`}
+                        >
+                            {msg.content}
+                        </div>
                     </div>
                 ))}
-
                 {loading && (
                     <div className="text-sm text-gray-400 italic">El asistente está pensando…</div>
                 )}
             </CardContent>
-            {/* FIN ÁREA DE MENSAJES */}
 
-            {/* INICIO FORMULARIO DE ENTRADA: Para enviar mensajes */}
             <CardFooter>
                 <form onSubmit={handleSend} className="w-full flex gap-2">
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Escribe tu mensaje…"
+                        placeholder="Interacción deshabilitada para la simulación"
                         className="flex-1 input-style"
+                        disabled={true}
                     />
                     <Button
                         type="submit"
-                        disabled={loading}
+                        disabled={true}
                         className="button-style"
                     >
                         Enviar
                     </Button>
                 </form>
             </CardFooter>
-            {/* FIN FORMULARIO DE ENTRADA */}
         </Card>
     )
-    // FIN BLOQUE: Renderización visual
 }
-// FIN COMPONENTE AgentChat
