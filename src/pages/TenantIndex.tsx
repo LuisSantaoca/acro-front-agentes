@@ -16,7 +16,8 @@ export default function TenantIndex() {
             return
         }
 
-        const subdomain = tenant.tenantName.toLowerCase().split(' ')[0] // e.g. "kokitos"
+        const subdomain = tenant?.tenantName?.toLowerCase().split(' ')[0] || 'desconocido';
+
         const path = `./tenants/${subdomain}/index.tsx`
         const loadTenant = tenantModules[path]
 
