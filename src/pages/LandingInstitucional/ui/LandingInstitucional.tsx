@@ -1,4 +1,4 @@
-import AgentChat from '@/components/agents/AgentChat';
+import LandingAgentChat from '@/components/agents/LandingAgentChat';
 import { getTenantFromHostname } from '@/config/tenants';
 
 const LandingInstitucional = () => {
@@ -99,7 +99,7 @@ const LandingInstitucional = () => {
         <section className="w-full max-w-3xl my-10">
     {tenantConfig && (
         <div className="p-1 bg-indigo-200 rounded-xl shadow-lg"> {/* Color alrededor */}
-            <AgentChat
+            <LandingAgentChat
                 agentName={tenantConfig.agentName}
                 webhook={tenantConfig.agentWebhook}
                 logo="/ruta/logo-institucional.png"
