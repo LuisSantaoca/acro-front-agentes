@@ -13,18 +13,27 @@ jobs:
       - name: 📥 Checkout Repo
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Node & pnpm
-        uses: pnpm/action-setup@v2
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10.11.0
 
-      - uses: actions/setup-node@v4
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
+      - name: 📦 Cache pnpm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: 🧪 Install Dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile --prefer-offline --network-timeout 180000
 
       - name: 🛠️ Build Project
         run: pnpm run build
@@ -50,4 +59,3 @@ jobs:
       - name: ❌ Notify Failure
         if: failure()
         run: echo "❌ Deploy failed"
-
