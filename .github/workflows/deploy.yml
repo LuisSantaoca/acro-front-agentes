@@ -33,7 +33,8 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: 🧪 Install Dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline --network-timeout 180000
+        run: pnpm install --frozen-lockfile --prefer-offline --fetch-timeout 180000
+
 
       - name: 🛠️ Build Project
         run: pnpm run build
