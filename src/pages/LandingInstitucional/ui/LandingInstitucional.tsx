@@ -27,7 +27,7 @@ const LandingInstitucional = () => {
                 <div className="relative z-20 mx-auto flex max-w-6xl flex-col items-center justify-between px-8 py-16 md:flex-row md:py-24 lg:py-28">
                     <div className="mb-10 w-full text-center md:mb-0 md:w-3/5 md:text-left">
                         <h1 className="text-4xl font-bold leading-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl">
-                            Anticípate a las plagas con <span className="text-cyan-300">precisión en tiempo real</span>
+                           XXX Anticípate a las plagas con <span className="text-cyan-300">precisión en tiempo real</span>
                         </h1>
                         <p className="mt-4 max-w-xl text-lg text-indigo-200 drop-shadow-md md:text-xl">
                             Inteligencia artificial de ACRO que predice riesgos agrícolas, especialmente diseñada para productores de berries.
