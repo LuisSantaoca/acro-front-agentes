@@ -1,41 +1,45 @@
-// INICIO: Importación de Zod para validaciones
-import { z } from 'zod'
-// FIN: Importación de Zod para validaciones
+import { z } from 'zod';
 
-// INICIO: Esquema adaptado al nuevo formato de respuesta del asistente
-const chatResponseSchema = z.object({
-  message: z.object({
-    type: z.literal('text'),
-    text: z.object({
-      value: z.string(),
-      annotations: z.array(z.any()).optional(),
-    }),
-  }),
-})
-// FIN: Esquema adaptado al nuevo formato de respuesta del asistente
+// Esquema adaptado al nuevo formato inicial de respuesta del backend
+const initialResponseSchema = z.object({
+  message: z.string(),
+  threadId: z.string(),
+  runId: z.string(),
+});
 
-// INICIO: Tipado derivado claramente del esquema
-type ChatResponse = z.infer<typeof chatResponseSchema>
-// FIN: Tipado derivado claramente del esquema
+// Esquema para obtener el resultado final del asistente
+const finalResponseSchema = z.object({
+  message: z.string(),
+});
 
-// INICIO: Función adaptada para enviar prompts al backend
-export async function sendChatPrompt(prompt: string): Promise<string> {
+// Tipos derivados claramente del esquema
+type InitialChatResponse = z.infer<typeof initialResponseSchema>;
+type FinalChatResponse = z.infer<typeof finalResponseSchema>;
+
+// Función para enviar prompts al backend
+export async function sendChatPrompt(prompt: string, threadId?: string): Promise<InitialChatResponse> {
   const response = await fetch('http://localhost:3001/chat', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ prompt }),
-  })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, threadId }),
+  });
 
   if (!response.ok) {
-    throw new Error('Error al enviar el mensaje al servidor')
+    throw new Error('Error al enviar el mensaje al servidor');
   }
 
-  const data = await response.json()
-  const parsedData = chatResponseSchema.parse(data)
-
-  // Devuelve claramente el contenido textual del mensaje del asistente
-  return parsedData.message.text.value
+  const data = await response.json();
+  return initialResponseSchema.parse(data);
 }
-// FIN: Función adaptada para enviar prompts al backend
+
+// Función para consultar estado del chat (polling)
+export async function getChatStatus(threadId: string, runId: string): Promise<FinalChatResponse> {
+  const response = await fetch(`http://localhost:3001/chat/status/${threadId}/${runId}`);
+
+  if (!response.ok) {
+    throw new Error('Error al obtener estado del chat');
+  }
+
+  const data = await response.json();
+  return finalResponseSchema.parse(data);
+}
