@@ -4,17 +4,19 @@ import cors from 'cors';
 import path from 'path';
 import fetch from 'node-fetch';
 
-// Cargar variables de entorno
+// Inicio bloque: Cargar variables de entorno
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const PORT = Number(process.env.PORT || 3001);
-const { OPENAI_API_KEY, OPENAI_ASSISTANT_ID } = process.env;
+const { OPENAI_API_KEY, OPENAI_ASSISTANT_ID, OPENAI_THREAD_ID } = process.env;
 
-if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID) {
-  console.error('❌ Error crítico: OPENAI_API_KEY o OPENAI_ASSISTANT_ID faltan en .env.');
+if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID || !OPENAI_THREAD_ID) {
+  console.error('❌ Error crítico: OPENAI_API_KEY, OPENAI_ASSISTANT_ID o OPENAI_THREAD_ID faltan en .env.');
   process.exit(1);
 }
+// Fin bloque: Cargar variables de entorno
 
+// Inicio bloque: Interfaces
 interface IRun { id: string; status: string; }
 interface IMessage {
   id: string;
@@ -22,7 +24,9 @@ interface IMessage {
   role: string;
   content: { type: string; text: { value: string } }[];
 }
+// Fin bloque: Interfaces
 
+// Inicio bloque: Cliente API OpenAI
 const apiClient = {
   headers: {
     'Content-Type': 'application/json',
@@ -32,10 +36,7 @@ const apiClient = {
 
   async request(endpoint: string, options: any = {}) {
     const url = `https://api.openai.com/v1${endpoint}`;
-    const response = await fetch(url, {
-      headers: this.headers,
-      ...options,
-    });
+    const response = await fetch(url, { headers: this.headers, ...options });
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({ message: 'Error desconocido al leer el cuerpo' }));
@@ -46,17 +47,16 @@ const apiClient = {
   },
 
   post(endpoint: string, body: any) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
+    return this.request(endpoint, { method: 'POST', body: JSON.stringify(body) });
   },
 
   get(endpoint: string) {
     return this.request(endpoint);
   }
 };
+// Fin bloque: Cliente API OpenAI
 
+// Inicio bloque: Servicio OpenAI
 const openAIService = {
   async createMessage(threadId: string, content: string): Promise<void> {
     await apiClient.post(`/threads/${threadId}/messages`, { role: 'user', content });
@@ -93,15 +93,20 @@ const openAIService = {
     return await apiClient.post('/threads', {});
   }
 };
+// Fin bloque: Servicio OpenAI
 
 const app = express();
+
+// Inicio bloque: Configuración middleware
 app.use(express.json());
 app.use(cors({
   origin: ["https://elathia.ai", "https://www.elathia.ai"],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// Fin bloque: Configuración middleware
 
+// Inicio bloque: Rutas API
 app.get('/', (_req: Request, res: Response) => {
   res.send('🚀 Backend OpenAI activo.');
 });
@@ -111,18 +116,15 @@ app.post('/chat', async (req: Request, res: Response, next: NextFunction) => {
     let { prompt, threadId } = req.body;
 
     if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'El campo "prompt" es obligatorio.' });
+      return res.status(400).json({ error: 'El campo \"prompt\" es obligatorio.' });
     }
 
     if (!threadId) {
-      const newThread = await openAIService.createNewThread();
-      threadId = newThread.id;
+      threadId = OPENAI_THREAD_ID; // Claramente definido desde .env
     }
 
     await openAIService.createMessage(threadId, prompt);
     const run = await openAIService.createRun(threadId);
-
-    console.log("🔎 ThreadId usado:", threadId);
 
     res.status(202).json({
       message: "Solicitud aceptada y en proceso.",
@@ -144,11 +146,14 @@ app.get('/chat/status/:threadId/:runId', async (req: Request, res: Response, nex
     next(error);
   }
 });
+// Fin bloque: Rutas API
 
+// Inicio bloque: Manejo de errores
 app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('❌ Error:', error.message);
   res.status(500).json({ error: error.message });
 });
+// Fin bloque: Manejo de errores
 
 app.listen(PORT, () => {
   console.log(`✅ Servidor escuchando en puerto ${PORT}`);
