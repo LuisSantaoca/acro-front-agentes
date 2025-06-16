@@ -122,6 +122,8 @@ app.post('/chat', async (req: Request, res: Response, next: NextFunction) => {
     await openAIService.createMessage(threadId, prompt);
     const run = await openAIService.createRun(threadId);
 
+    console.log("🔎 ThreadId usado:", threadId);
+
     res.status(202).json({
       message: "Solicitud aceptada y en proceso.",
       threadId,
