@@ -123,6 +123,8 @@ app.post('/chat', async (req: Request, res: Response, next: NextFunction) => {
       threadId = OPENAI_THREAD_ID; // Claramente definido desde .env
     }
 
+    console.log("🚩 Usando ThreadId:", threadId); // Log claramente visible
+
     await openAIService.createMessage(threadId, prompt);
     const run = await openAIService.createRun(threadId);
 
