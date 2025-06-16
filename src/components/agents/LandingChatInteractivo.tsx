@@ -1,5 +1,5 @@
 // Archivo: LandingChatInteractivo.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { sendChatPrompt, getChatStatus } from '@/lib/openaiChatService';
@@ -21,6 +21,7 @@ interface Message {
 }
 
 const LandingChatInteractivo = () => {
+  // Inicio bloque estado inicial y localStorage
   const [message, setMessage] = useState('');
   const [threadId, setThreadId] = useState<string | null>(() => localStorage.getItem('threadId'));
   const [runId, setRunId] = useState<string | null>(null);
@@ -44,7 +45,9 @@ const LandingChatInteractivo = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+  // Fin bloque estado inicial y localStorage
 
+  // Inicio bloque mutación envío mensaje
   const mutation = useMutation({
     mutationFn: ({ prompt, threadId }: { prompt: string; threadId?: string }) =>
       sendChatPrompt(prompt, threadId),
@@ -59,7 +62,9 @@ const LandingChatInteractivo = () => {
       setLoading(false);
     },
   });
+  // Fin bloque mutación envío mensaje
 
+  // Inicio bloque polling respuesta
   useEffect(() => {
     if (!runId || !threadId) return;
 
@@ -85,7 +90,9 @@ const LandingChatInteractivo = () => {
 
     return () => clearInterval(intervalId);
   }, [runId, threadId]);
+  // Fin bloque polling respuesta
 
+  // Inicio bloque manejar envío mensaje
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
 
@@ -108,6 +115,15 @@ const LandingChatInteractivo = () => {
     setMessage('');
   };
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+  // Fin bloque manejar envío mensaje
+
+  // Inicio bloque copiar mensaje
   const copiarTexto = async (texto: string) => {
     try {
       await navigator.clipboard.writeText(texto);
@@ -116,7 +132,9 @@ const LandingChatInteractivo = () => {
       toast.error('Error al copiar mensaje');
     }
   };
+  // Fin bloque copiar mensaje
 
+  // Inicio bloque UI componente
   return (
     <motion.div className="mx-auto max-w-4xl px-6 py-8 font-sans text-gray-700 bg-[#FAFAFA]">
       <Card className="shadow-2xl rounded-2xl">
@@ -127,7 +145,7 @@ const LandingChatInteractivo = () => {
           <div ref={chatContainerRef} className="max-h-72 overflow-y-auto">
             <AnimatePresence>
               {messages.map((msg, index) => (
-                <motion.div key={index}>
+                <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-2 my-2 rounded-xl ${msg.role === 'user' ? 'bg-blue-100 text-right' : 'bg-gray-100 text-left'}`}>
                   <p>{msg.content}</p>
                   <button onClick={() => copiarTexto(msg.content)}>📋</button>
                 </motion.div>
@@ -136,13 +154,15 @@ const LandingChatInteractivo = () => {
             </AnimatePresence>
           </div>
           <form onSubmit={handleSubmit}>
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} />
+            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} />
             <Button type="submit">Enviar</Button>
           </form>
         </CardContent>
       </Card>
     </motion.div>
   );
+  // Fin bloque UI componente
 };
 
 export default LandingChatInteractivo;
+
