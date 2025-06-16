@@ -96,7 +96,11 @@ const openAIService = {
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: ["https://elathia.ai", "https://www.elathia.ai"],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.get('/', (_req: Request, res: Response) => {
   res.send('🚀 Backend OpenAI activo.');
