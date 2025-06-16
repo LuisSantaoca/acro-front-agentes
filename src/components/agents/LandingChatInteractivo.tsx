@@ -14,7 +14,7 @@ const messageSchema = z.object({
 });
 
 interface Message {
-  role: 'user' | 'agent';
+  role: 'user' | 'agent' | 'status';
   content: string;
   status?: 'sending' | 'sent';
   timestamp: string;
@@ -29,7 +29,6 @@ const LandingChatInteractivo = () => {
     const saved = localStorage.getItem('chatMessages');
     return saved ? JSON.parse(saved) : [];
   });
-  const [loading, setLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,12 +53,10 @@ const LandingChatInteractivo = () => {
     onSuccess: ({ threadId, runId }) => {
       setThreadId(threadId);
       setRunId(runId);
-      setLoading(true);
     },
     onError: () => {
       toast.error('No se pudo enviar el mensaje.');
-      setMessages((prev) => prev.slice(0, -1));
-      setLoading(false);
+      setMessages((prev) => prev.slice(0, -2));
     },
   });
   // Fin bloque mutación envío mensaje
@@ -73,14 +70,10 @@ const LandingChatInteractivo = () => {
         const { message: content } = await getChatStatus(threadId, runId);
 
         setMessages((prev) => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage && lastMessage.role === 'agent' && lastMessage.content === content) {
-            return prev;
-          }
-          return [...prev, { role: 'agent', content, timestamp: new Date().toLocaleTimeString() }];
+          const updatedMessages = prev.filter(msg => msg.role !== 'status');
+          return [...updatedMessages, { role: 'agent', content, timestamp: new Date().toLocaleTimeString() }];
         });
 
-        setLoading(false);
         setRunId(null);
         clearInterval(intervalId);
       } catch (error) {
@@ -108,7 +101,8 @@ const LandingChatInteractivo = () => {
 
     setMessages((prev) => [
       ...prev,
-      { role: 'user', content: parsed.data.message, status: 'sending', timestamp: new Date().toLocaleTimeString() },
+      { role: 'user', content: parsed.data.message, status: 'sent', timestamp: new Date().toLocaleTimeString() },
+      { role: 'status', content: 'Enviando...', timestamp: new Date().toLocaleTimeString() },
     ]);
 
     mutation.mutate({ prompt: parsed.data.message, threadId: threadId || undefined });
@@ -123,17 +117,6 @@ const LandingChatInteractivo = () => {
   };
   // Fin bloque manejar envío mensaje
 
-  // Inicio bloque copiar mensaje
-  const copiarTexto = async (texto: string) => {
-    try {
-      await navigator.clipboard.writeText(texto);
-      toast.success('Mensaje copiado al portapapeles');
-    } catch {
-      toast.error('Error al copiar mensaje');
-    }
-  };
-  // Fin bloque copiar mensaje
-
   // Inicio bloque UI componente
   return (
     <motion.div className="mx-auto max-w-4xl px-6 py-8 font-sans text-gray-700 bg-[#FAFAFA]">
@@ -145,12 +128,10 @@ const LandingChatInteractivo = () => {
           <div ref={chatContainerRef} className="max-h-72 overflow-y-auto">
             <AnimatePresence>
               {messages.map((msg, index) => (
-                <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-2 my-2 rounded-xl ${msg.role === 'user' ? 'bg-blue-100 text-right' : 'bg-gray-100 text-left'}`}>
-                  <p>{msg.content}</p>
-                  <button onClick={() => copiarTexto(msg.content)}>📋</button>
+                <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-2 my-2 rounded-xl ${msg.role === 'user' ? 'bg-blue-100 text-right' : msg.role === 'agent' ? 'bg-gray-100 text-left' : 'text-center text-sm text-gray-500'}`}>
+                  {msg.content}
                 </motion.div>
               ))}
-              {loading && <div>Enviando...</div>}
             </AnimatePresence>
           </div>
           <form onSubmit={handleSubmit}>
@@ -165,4 +146,3 @@ const LandingChatInteractivo = () => {
 };
 
 export default LandingChatInteractivo;
-
