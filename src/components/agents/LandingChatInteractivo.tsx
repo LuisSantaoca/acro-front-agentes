@@ -66,10 +66,15 @@ const LandingChatInteractivo = () => {
     const intervalId = setInterval(async () => {
       try {
         const { message: content } = await getChatStatus(threadId, runId);
-        setMessages((prev) => [
-          ...prev,
-          { role: 'agent', content, timestamp: new Date().toLocaleTimeString() },
-        ]);
+
+        setMessages((prev) => {
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage && lastMessage.role === 'agent' && lastMessage.content === content) {
+            return prev;
+          }
+          return [...prev, { role: 'agent', content, timestamp: new Date().toLocaleTimeString() }];
+        });
+
         setLoading(false);
         setRunId(null);
         clearInterval(intervalId);
