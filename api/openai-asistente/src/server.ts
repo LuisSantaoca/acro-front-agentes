@@ -26,7 +26,7 @@ interface IMessage {
 }
 // Fin bloque: Interfaces
 
-// Inicio bloque: Cliente API OpenAI
+// Inicio bloque: Cliente API OpenAI con tipado explícito
 const apiClient = {
   headers: {
     'Content-Type': 'application/json',
@@ -34,51 +34,51 @@ const apiClient = {
     'OpenAI-Beta': 'assistants=v2',
   },
 
-  async request(endpoint: string, options: any = {}) {
+  async request<T>(endpoint: string, options: any = {}): Promise<T> {
     const url = `https://api.openai.com/v1${endpoint}`;
     const response = await fetch(url, { headers: this.headers, ...options });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({ message: 'Error desconocido al leer el cuerpo' }));
+      const errorBody = await response.json().catch(() => ({ message: 'Error desconocido al leer el cuerpo' })) as { error?: { message?: string }, message?: string };
       throw new Error(`Error API OpenAI: ${response.status} ${response.statusText} - ${errorBody.error?.message || errorBody.message}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   },
 
-  post(endpoint: string, body: any) {
-    return this.request(endpoint, { method: 'POST', body: JSON.stringify(body) });
+  post<T>(endpoint: string, body: any): Promise<T> {
+    return this.request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) });
   },
 
-  get(endpoint: string) {
-    return this.request(endpoint);
+  get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint);
   }
 };
 // Fin bloque: Cliente API OpenAI
 
-// Inicio bloque: Servicio OpenAI
+// Inicio bloque: Servicio OpenAI con tipado explícito
 const openAIService = {
   async createMessage(threadId: string, content: string): Promise<void> {
     await apiClient.post(`/threads/${threadId}/messages`, { role: 'user', content });
   },
 
   async createRun(threadId: string): Promise<IRun> {
-    return await apiClient.post(`/threads/${threadId}/runs`, { assistant_id: OPENAI_ASSISTANT_ID });
+    return await apiClient.post<IRun>(`/threads/${threadId}/runs`, { assistant_id: OPENAI_ASSISTANT_ID });
   },
 
   async getFinalResponse(threadId: string, runId: string): Promise<string> {
     let runStatus: IRun;
     do {
       await new Promise(r => setTimeout(r, 1500));
-      runStatus = await apiClient.get(`/threads/${threadId}/runs/${runId}`);
+      runStatus = await apiClient.get<IRun>(`/threads/${threadId}/runs/${runId}`);
     } while (['queued', 'in_progress'].includes(runStatus.status));
 
     if (runStatus.status !== 'completed') {
       throw new Error(`Run finalizó con estado inesperado: ${runStatus.status}`);
     }
 
-    const messages = await apiClient.get(`/threads/${threadId}/messages`);
-    const assistantMessage = (messages.data as IMessage[]).find(
+    const messages = await apiClient.get<{ data: IMessage[] }>(`/threads/${threadId}/messages`);
+    const assistantMessage = messages.data.find(
       (m) => m.run_id === runId && m.role === 'assistant'
     );
 
@@ -90,7 +90,7 @@ const openAIService = {
   },
 
   async createNewThread(): Promise<{ id: string }> {
-    return await apiClient.post('/threads', {});
+    return await apiClient.post<{ id: string }>('/threads', {});
   }
 };
 // Fin bloque: Servicio OpenAI
@@ -120,10 +120,10 @@ app.post('/chat', async (req: Request, res: Response, next: NextFunction) => {
     }
 
     if (!threadId) {
-      threadId = OPENAI_THREAD_ID; // Claramente definido desde .env
+      threadId = OPENAI_THREAD_ID;
     }
 
-    console.log("🚩 Usando ThreadId:", threadId); // Log claramente visible
+    console.log("🚩 Usando ThreadId:", threadId);
 
     await openAIService.createMessage(threadId, prompt);
     const run = await openAIService.createRun(threadId);
