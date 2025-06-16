@@ -45,12 +45,12 @@ jobs:
 
       - name: 📦 Backup Previous Build
         run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes ]; then mv /var/www/agentes /var/www/agentes_backup_$(date +%Y%m%d%H%M%S); fi'
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes/frontend ]; then mv /var/www/agentes/frontend /var/www/agentes/frontend_backup_$(date +%Y%m%d%H%M%S); fi'
 
       - name: 🚀 Deploy New Build
         run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes'
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/agentes
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/frontend'
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
 
       - name: 🔄 Restart Nginx
         run: |

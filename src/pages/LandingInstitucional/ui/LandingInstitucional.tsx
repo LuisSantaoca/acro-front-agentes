@@ -61,8 +61,8 @@ const LandingInstitucional = () => {
             <section className="w-full max-w-4xl my-10">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                     {[
-                        { title: 'Información precisa', desc: 'xMás efectiva que consultores', img: '/assets/escudo01.png', bgColor: 'bg-blue-50' },
-                        { title: 'Prevención efectiva', desc: 'Predice condiciones para plagas', img: '/assets/escudo02.png', bgColor: 'bg-green-50' },
+                        { title: 'Información precisa', desc: 'Más efectiva que consultores', img: '/assets/escudo01.png', bgColor: 'bg-blue-50' },
+                        { title: 'Prevención efectiva', desc: 'xPredice condiciones para plagas', img: '/assets/escudo02.png', bgColor: 'bg-green-50' },
                         { title: 'Rentabilidad optimizada', desc: 'Reduce costos, aumenta productividad', img: '/assets/escudo03.png', bgColor: 'bg-yellow-50' }
                     ].map((benefit, index) => (
                         <div key={index} className={`p-4 ${benefit.bgColor} rounded-lg shadow-sm`}>
