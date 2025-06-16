@@ -9,12 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-// Validación del mensaje del usuario
 const messageSchema = z.object({
   message: z.string().min(1, 'Por favor escribe un mensaje antes de enviar.'),
 });
 
-// Tipado interno para mensajes
 interface Message {
   role: 'user' | 'agent';
   content: string;

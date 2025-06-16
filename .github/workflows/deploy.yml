@@ -1,4 +1,4 @@
-name: Deploy Frontend to acro_com_mx
+name: Deploy Frontend to elathia_ai
 
 on:
   push:
@@ -45,12 +45,12 @@ jobs:
 
       - name: 📦 Backup Previous Build
         run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/acro_landing ]; then mv /var/www/acro_landing /var/www/acro_landing_backup_$(date +%Y%m%d%H%M%S); fi'
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes ]; then mv /var/www/agentes /var/www/agentes_backup_$(date +%Y%m%d%H%M%S); fi'
 
       - name: 🚀 Deploy New Build
         run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/acro_landing'
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/acro_landing
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes'
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/agentes
 
       - name: 🔄 Restart Nginx
         run: |
