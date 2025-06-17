@@ -16,8 +16,8 @@ const finalResponseSchema = z.object({
 type InitialChatResponse = z.infer<typeof initialResponseSchema>;
 type FinalChatResponse = z.infer<typeof finalResponseSchema>;
 
+const API_BASE = "https://api.elathia.ai";
 
-const API_BASE = "https://api.elathia.ai:3001";
 
 
 // Función para enviar prompts al backend
