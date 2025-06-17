@@ -39,12 +39,12 @@ jobs:
 
       # Frontend: instalación dependencias
       - name: 🧪 Install Frontend Dependencies
-        working-directory: ./frontend
+        working-directory: ./
         run: pnpm install --frozen-lockfile
 
       # Frontend: Build Project
       - name: 🛠️ Build Frontend
-        working-directory: ./frontend
+        working-directory: ./
         run: pnpm run build
 
       - name: 🔐 Add SSH Key
@@ -72,7 +72,7 @@ jobs:
       - name: 🚀 Deploy Frontend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/frontend'
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" frontend/dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
 
       # Reiniciar Nginx
       - name: 🔄 Restart Nginx
@@ -87,4 +87,3 @@ jobs:
       - name: ❌ Notify Failure
         if: failure()
         run: echo "❌ Deploy failed"
-
