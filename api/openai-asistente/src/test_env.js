@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: '.env' }); // carga desde la raíz del proyecto
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -29,3 +29,4 @@ async function enviarMensaje(prompt) {
 }
 
 enviarMensaje("Mensaje de prueba directo al thread");
+
