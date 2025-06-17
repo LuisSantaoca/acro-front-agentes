@@ -1,4 +1,4 @@
-name: Deploy Frontend to elathia_ai
+name: Deploy Frontend y Backend to elathia_ai
 
 on:
   push:
@@ -32,10 +32,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
-      - name: 🧪 Install Dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline --fetch-timeout 180000
+      # Backend: instalación dependencias
+      - name: 🧪 Install Backend Dependencies
+        working-directory: ./backend
+        run: pnpm install --frozen-lockfile
 
-      - name: 🛠️ Build Project
+      # Frontend: instalación dependencias
+      - name: 🧪 Install Frontend Dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      # Frontend: Build Project
+      - name: 🛠️ Build Frontend
+        working-directory: ./frontend
         run: pnpm run build
 
       - name: 🔐 Add SSH Key
@@ -43,19 +52,34 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
-      - name: 📦 Backup Previous Build
+      # Backup Backend
+      - name: 📦 Backup Previous Backend Build
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
+
+      # Deploy Backend
+      - name: 🚀 Deploy Backend
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" backend/ santaoca@64.23.198.218:/var/www/agentes/backend
+
+      # Backup Frontend
+      - name: 📦 Backup Previous Frontend Build
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes/frontend ]; then mv /var/www/agentes/frontend /var/www/agentes/frontend_backup_$(date +%Y%m%d%H%M%S); fi'
 
-      - name: 🚀 Deploy New Build
+      # Deploy Frontend
+      - name: 🚀 Deploy Frontend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/frontend'
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" frontend/dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
 
+      # Reiniciar Nginx
       - name: 🔄 Restart Nginx
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'sudo systemctl restart nginx'
 
+      # Notificaciones
       - name: ✅ Notify Success
         if: success()
         run: echo "✅ Deploy successful"
