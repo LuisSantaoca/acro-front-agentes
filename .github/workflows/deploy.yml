@@ -39,12 +39,10 @@ jobs:
 
       # Frontend: instalación dependencias
       - name: 🧪 Install Frontend Dependencies
-        working-directory: ./
         run: pnpm install --frozen-lockfile
 
       # Frontend: Build Project
       - name: 🛠️ Build Frontend
-        working-directory: ./
         run: pnpm run build
 
       - name: 🔐 Add SSH Key
@@ -55,7 +53,8 @@ jobs:
       # Backup Backend
       - name: 📦 Backup Previous Backend Build
         run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
+            'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
 
       # Deploy Backend
       - name: 🚀 Deploy Backend
@@ -66,7 +65,8 @@ jobs:
       # Backup Frontend
       - name: 📦 Backup Previous Frontend Build
         run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'if [ -d /var/www/agentes/frontend ]; then mv /var/www/agentes/frontend /var/www/agentes/frontend_backup_$(date +%Y%m%d%H%M%S); fi'
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
+            'if [ -d /var/www/agentes/frontend ]; then mv /var/www/agentes/frontend /var/www/agentes/frontend_backup_$(date +%Y%m%d%H%M%S); fi'
 
       # Deploy Frontend
       - name: 🚀 Deploy Frontend
