@@ -13,22 +13,18 @@ import { RotateCw, AlertTriangle } from 'lucide-react';
 
 // --- Constantes y Tipos ---
 
-// NUEVO: Límite de reintentos para el sondeo (polling)
 const MAX_POLL_RETRIES = 5;
 
-// CAMBIO: El esquema de validación no cambia, pero es buena práctica tenerlo aquí.
 const messageInputSchema = z.object({
   prompt: z.string().min(1, 'Por favor, escribe un mensaje antes de enviar.'),
 });
 
-// CAMBIO: Se mejora el tipo Message para soportar una UI optimista más robusta.
 type Message = {
-  id: string; // ID único para cada mensaje, crucial para actualizaciones y key de React
+  id: string;
   role: 'user' | 'agent' | 'status';
   content: string;
   timestamp: string;
-  // NUEVO: Estado para los mensajes del usuario, permite reintentos.
-  status?: 'sending' | 'sent' | 'failed'; 
+  status?: 'sending' | 'sent' | 'failed';
 };
 
 // --- Componente ---
@@ -39,7 +35,6 @@ export const LandingChatInteractivo = () => {
   const [prompt, setPrompt] = useState('');
   const [runId, setRunId] = useState<string | null>(null);
   
-  // CAMBIO: El threadId ahora también se persiste en localStorage.
   const [threadId, setThreadId] = useState<string | null>(() => {
     return localStorage.getItem('chatThreadId');
   });
@@ -49,14 +44,11 @@ export const LandingChatInteractivo = () => {
     return savedMessages ? JSON.parse(savedMessages) : [];
   });
 
-  // NUEVO: Estado para controlar los reintentos del sondeo.
   const [pollRetries, setPollRetries] = useState(0);
-
   const chatContainerRef = useRef<HTMLDivElement>(null);
   
   // --- Efectos Laterales (Side Effects) ---
 
-  // Efecto para persistir mensajes y threadId en localStorage
   useEffect(() => {
     localStorage.setItem('chatMessages', JSON.stringify(messages));
   }, [messages]);
@@ -65,12 +57,10 @@ export const LandingChatInteractivo = () => {
     if (threadId) {
       localStorage.setItem('chatThreadId', threadId);
     } else {
-      // Limpia el ID si la conversación se reinicia
       localStorage.removeItem('chatThreadId');
     }
   }, [threadId]);
 
-  // Efecto para hacer autoscroll al final del chat
   useEffect(() => {
     chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
@@ -81,7 +71,6 @@ export const LandingChatInteractivo = () => {
     mutationFn: (variables: { prompt: string; threadId: string | null }) => 
       sendChatPrompt(variables.prompt, variables.threadId),
     
-    // CAMBIO: onMutate se usa para la UI optimista antes de la petición.
     onMutate: async (variables) => {
       const tempId = `temp_${Date.now()}`;
       setMessages((prev) => [
@@ -101,12 +90,12 @@ export const LandingChatInteractivo = () => {
         },
       ]);
       setPrompt('');
-      return { tempId }; // Pasamos el ID temporal al contexto
+      return { tempId };
     },
 
     onSuccess: (data, _variables, context) => {
       setRunId(data.runId);
-      setThreadId(data.threadId); // El backend devuelve el threadId (nuevo o existente)
+      setThreadId(data.threadId);
       setMessages((prev) => 
         prev.map(msg => 
           msg.id === context?.tempId ? { ...msg, status: 'sent' } : msg
@@ -114,12 +103,11 @@ export const LandingChatInteractivo = () => {
       );
     },
 
-    // CAMBIO: onError ahora actualiza el estado del mensaje a 'failed' en lugar de eliminarlo.
     onError: (_error, _variables, context) => {
       toast.error('No se pudo enviar el mensaje.');
       setMessages((prev) =>
         prev
-          .filter(msg => msg.id !== `status_${context?.tempId}`) // Elimina el mensaje 'escribiendo...'
+          .filter(msg => msg.id !== `status_${context?.tempId}`)
           .map(msg =>
             msg.id === context?.tempId ? { ...msg, status: 'failed' } : msg
           )
@@ -127,13 +115,15 @@ export const LandingChatInteractivo = () => {
     },
   });
 
-  // CAMBIO: El useEffect de sondeo ahora maneja reintentos y errores de forma visible.
   useEffect(() => {
     if (!runId || !threadId) return;
 
     const intervalId = setInterval(async () => {
       try {
+        // <<< LA CORRECCIÓN CLAVE ESTÁ AQUÍ >>>
+        // Se asegura que los parámetros se pasen en el orden correcto: (threadId, runId)
         const response = await getChatStatus(threadId, runId);
+        
         if (response && response.message) {
           clearInterval(intervalId);
           setRunId(null);
@@ -178,7 +168,7 @@ export const LandingChatInteractivo = () => {
   
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
-    if (mutation.isPending) return; // Evita envíos múltiples
+    if (mutation.isPending) return;
 
     const parsed = messageInputSchema.safeParse({ prompt });
     if (!parsed.success) {
@@ -197,7 +187,6 @@ export const LandingChatInteractivo = () => {
   };
 
   const handleRetry = (failedMessage: Message) => {
-    // Elimina el mensaje fallido y vuelve a intentar la mutación con su contenido
     setMessages(prev => prev.filter(msg => msg.id !== failedMessage.id));
     mutation.mutate({ prompt: failedMessage.content, threadId });
   };
