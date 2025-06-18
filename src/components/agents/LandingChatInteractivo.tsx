@@ -25,6 +25,7 @@ const LandingChatInteractivo = () => {
     const saved = localStorage.getItem('chatMessages');
     return saved ? JSON.parse(saved) : [];
   });
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,19 +33,15 @@ const LandingChatInteractivo = () => {
   }, [messages]);
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
+    chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight });
   }, [messages]);
 
   const mutation = useMutation({
     mutationFn: ({ prompt }: { prompt: string }) => sendChatPrompt(prompt),
-    onSuccess: ({ runId }) => {
-      setRunId(runId);
-    },
+    onSuccess: ({ runId }) => setRunId(runId),
     onError: () => {
       toast.error('No se pudo enviar el mensaje.');
-      setMessages((prev) => prev.slice(0, -2));
+      setMessages(prev => prev.slice(0, -2));
     },
   });
 
@@ -53,18 +50,15 @@ const LandingChatInteractivo = () => {
 
     const intervalId = setInterval(async () => {
       try {
-        const { message: content } = await getChatStatus(runId);
-
-        setMessages((prev) => {
-          const updatedMessages = prev.filter((msg) => msg.role !== 'status');
-          return [
-            ...updatedMessages,
-            { role: 'agent', content, timestamp: new Date().toLocaleTimeString() },
-          ];
-        });
-
-        setRunId(null);
-        clearInterval(intervalId);
+        const response = await getChatStatus(runId);
+        if (response && response.message) {
+          setMessages(prev => [
+            ...prev.filter(msg => msg.role !== 'status'),
+            { role: 'agent', content: response.message, timestamp: new Date().toLocaleTimeString() },
+          ]);
+          clearInterval(intervalId);
+          setRunId(null);
+        }
       } catch (error) {
         console.log('Esperando respuesta del servidor...');
       }
@@ -74,19 +68,16 @@ const LandingChatInteractivo = () => {
   }, [runId]);
 
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
+    e?.preventDefault();
 
     const parsed = messageSchema.safeParse({ message });
 
     if (!parsed.success) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'agent', content: parsed.error.errors[0].message, timestamp: new Date().toLocaleTimeString() },
-      ]);
+      toast.error(parsed.error.errors[0].message);
       return;
     }
 
-    setMessages((prev) => [
+    setMessages(prev => [
       ...prev,
       { role: 'user', content: parsed.data.message, timestamp: new Date().toLocaleTimeString() },
       { role: 'status', content: 'Enviando...', timestamp: new Date().toLocaleTimeString() },
@@ -118,7 +109,13 @@ const LandingChatInteractivo = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className={`p-2 my-2 rounded-xl ${msg.role === 'user' ? 'bg-blue-100 text-right' : msg.role === 'agent' ? 'bg-gray-100 text-left' : 'text-center text-sm text-gray-500'}`}
+                  className={`p-2 my-2 rounded-xl ${
+                    msg.role === 'user'
+                      ? 'bg-blue-100 text-right'
+                      : msg.role === 'agent'
+                      ? 'bg-gray-100 text-left'
+                      : 'text-center text-sm text-gray-500'
+                  }`}
                 >
                   {msg.content}
                 </motion.div>
@@ -126,7 +123,11 @@ const LandingChatInteractivo = () => {
             </AnimatePresence>
           </div>
           <form onSubmit={handleSubmit}>
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} />
+            <Textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
             <Button type="submit">Enviar</Button>
           </form>
         </CardContent>
