@@ -1,3 +1,5 @@
+// src/components/LandingChatInteractivo.tsx
+
 import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -7,86 +9,186 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { RotateCw, AlertTriangle } from 'lucide-react';
 
-const messageSchema = z.object({
-  message: z.string().min(1, 'Por favor escribe un mensaje antes de enviar.'),
+// --- Constantes y Tipos ---
+
+// NUEVO: Límite de reintentos para el sondeo (polling)
+const MAX_POLL_RETRIES = 5;
+
+// CAMBIO: El esquema de validación no cambia, pero es buena práctica tenerlo aquí.
+const messageInputSchema = z.object({
+  prompt: z.string().min(1, 'Por favor, escribe un mensaje antes de enviar.'),
 });
 
-interface Message {
+// CAMBIO: Se mejora el tipo Message para soportar una UI optimista más robusta.
+type Message = {
+  id: string; // ID único para cada mensaje, crucial para actualizaciones y key de React
   role: 'user' | 'agent' | 'status';
   content: string;
   timestamp: string;
-}
+  // NUEVO: Estado para los mensajes del usuario, permite reintentos.
+  status?: 'sending' | 'sent' | 'failed'; 
+};
 
-const LandingChatInteractivo = () => {
-  const [message, setMessage] = useState('');
+// --- Componente ---
+
+export const LandingChatInteractivo = () => {
+  // --- Estado del Componente ---
+
+  const [prompt, setPrompt] = useState('');
   const [runId, setRunId] = useState<string | null>(null);
+  
+  // CAMBIO: El threadId ahora también se persiste en localStorage.
+  const [threadId, setThreadId] = useState<string | null>(() => {
+    return localStorage.getItem('chatThreadId');
+  });
+  
   const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('chatMessages');
-    return saved ? JSON.parse(saved) : [];
+    const savedMessages = localStorage.getItem('chatMessages');
+    return savedMessages ? JSON.parse(savedMessages) : [];
   });
 
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  // NUEVO: Estado para controlar los reintentos del sondeo.
+  const [pollRetries, setPollRetries] = useState(0);
 
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  
+  // --- Efectos Laterales (Side Effects) ---
+
+  // Efecto para persistir mensajes y threadId en localStorage
   useEffect(() => {
     localStorage.setItem('chatMessages', JSON.stringify(messages));
   }, [messages]);
 
   useEffect(() => {
-    chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight });
+    if (threadId) {
+      localStorage.setItem('chatThreadId', threadId);
+    } else {
+      // Limpia el ID si la conversación se reinicia
+      localStorage.removeItem('chatThreadId');
+    }
+  }, [threadId]);
+
+  // Efecto para hacer autoscroll al final del chat
+  useEffect(() => {
+    chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  // --- Lógica de Mutación y Sondeo (Polling) ---
+
   const mutation = useMutation({
-    mutationFn: ({ prompt }: { prompt: string }) => sendChatPrompt(prompt),
-    onSuccess: ({ runId }) => setRunId(runId),
-    onError: () => {
+    mutationFn: (variables: { prompt: string; threadId: string | null }) => 
+      sendChatPrompt(variables.prompt, variables.threadId),
+    
+    // CAMBIO: onMutate se usa para la UI optimista antes de la petición.
+    onMutate: async (variables) => {
+      const tempId = `temp_${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          role: 'user',
+          content: variables.prompt,
+          timestamp: new Date().toLocaleTimeString(),
+          status: 'sending',
+        },
+        {
+          id: `status_${tempId}`,
+          role: 'status',
+          content: 'El agente está escribiendo...',
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
+      setPrompt('');
+      return { tempId }; // Pasamos el ID temporal al contexto
+    },
+
+    onSuccess: (data, _variables, context) => {
+      setRunId(data.runId);
+      setThreadId(data.threadId); // El backend devuelve el threadId (nuevo o existente)
+      setMessages((prev) => 
+        prev.map(msg => 
+          msg.id === context?.tempId ? { ...msg, status: 'sent' } : msg
+        )
+      );
+    },
+
+    // CAMBIO: onError ahora actualiza el estado del mensaje a 'failed' en lugar de eliminarlo.
+    onError: (_error, _variables, context) => {
       toast.error('No se pudo enviar el mensaje.');
-      setMessages(prev => prev.slice(0, -2));
+      setMessages((prev) =>
+        prev
+          .filter(msg => msg.id !== `status_${context?.tempId}`) // Elimina el mensaje 'escribiendo...'
+          .map(msg =>
+            msg.id === context?.tempId ? { ...msg, status: 'failed' } : msg
+          )
+      );
     },
   });
 
+  // CAMBIO: El useEffect de sondeo ahora maneja reintentos y errores de forma visible.
   useEffect(() => {
-    if (!runId) return;
+    if (!runId || !threadId) return;
 
     const intervalId = setInterval(async () => {
       try {
-        const response = await getChatStatus(runId);
+        const response = await getChatStatus(threadId, runId);
         if (response && response.message) {
-          setMessages(prev => [
-            ...prev.filter(msg => msg.role !== 'status'),
-            { role: 'agent', content: response.message, timestamp: new Date().toLocaleTimeString() },
-          ]);
           clearInterval(intervalId);
           setRunId(null);
+          setPollRetries(0);
+          setMessages((prev) => [
+            ...prev.filter((msg) => msg.role !== 'status'),
+            {
+              id: `agent_${Date.now()}`,
+              role: 'agent',
+              content: response.message,
+              timestamp: new Date().toLocaleTimeString(),
+            },
+          ]);
         }
       } catch (error) {
-        console.log('Esperando respuesta del servidor...');
+        const newRetryCount = pollRetries + 1;
+        setPollRetries(newRetryCount);
+        console.error(`Intento de sondeo ${newRetryCount} fallido.`);
+
+        if (newRetryCount >= MAX_POLL_RETRIES) {
+          clearInterval(intervalId);
+          setRunId(null);
+          setPollRetries(0);
+          toast.error('No se pudo obtener una respuesta del servidor.');
+          setMessages((prev) => [
+            ...prev.filter((msg) => msg.role !== 'status'),
+            {
+              id: `status_error_${Date.now()}`,
+              role: 'status',
+              content: 'Error al conectar con el servidor. Por favor, inténtalo más tarde.',
+              timestamp: new Date().toLocaleTimeString(),
+            },
+          ]);
+        }
       }
     }, 2000);
 
     return () => clearInterval(intervalId);
-  }, [runId]);
+  }, [runId, threadId, pollRetries]);
 
+  // --- Manejadores de Eventos ---
+  
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
+    if (mutation.isPending) return; // Evita envíos múltiples
 
-    const parsed = messageSchema.safeParse({ message });
-
+    const parsed = messageInputSchema.safeParse({ prompt });
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
       return;
     }
 
-    setMessages(prev => [
-      ...prev,
-      { role: 'user', content: parsed.data.message, timestamp: new Date().toLocaleTimeString() },
-      { role: 'status', content: 'Enviando...', timestamp: new Date().toLocaleTimeString() },
-    ]);
-
-    mutation.mutate({ prompt: parsed.data.message });
-    setMessage('');
+    mutation.mutate({ prompt: parsed.data.prompt, threadId });
   };
-
+  
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -94,41 +196,67 @@ const LandingChatInteractivo = () => {
     }
   };
 
+  const handleRetry = (failedMessage: Message) => {
+    // Elimina el mensaje fallido y vuelve a intentar la mutación con su contenido
+    setMessages(prev => prev.filter(msg => msg.id !== failedMessage.id));
+    mutation.mutate({ prompt: failedMessage.content, threadId });
+  };
+
+  // --- Renderizado del Componente ---
+
   return (
-    <motion.div className="mx-auto max-w-4xl px-6 py-8 font-sans text-gray-700 bg-[#FAFAFA]">
-      <Card className="shadow-2xl rounded-2xl">
-        <CardHeader className="bg-gradient-to-r from-[#4F46E5] to-[#6366F1] rounded-t-2xl">
-          <CardTitle className="text-white">Chat Interactivo ACRO</CardTitle>
+    <motion.div className="mx-auto max-w-2xl px-4 py-8 font-sans">
+      <Card className="shadow-lg rounded-xl w-full">
+        <CardHeader className="bg-gray-800 rounded-t-xl">
+          <CardTitle className="text-white text-center">Asistente Interactivo ACRO</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div ref={chatContainerRef} className="max-h-72 overflow-y-auto">
+        <CardContent className="p-4">
+          <div ref={chatContainerRef} className="h-96 overflow-y-auto space-y-4 p-4 border rounded-lg bg-gray-50">
             <AnimatePresence>
-              {messages.map((msg, index) => (
+              {messages.map((msg) => (
                 <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className={`p-2 my-2 rounded-xl ${
-                    msg.role === 'user'
-                      ? 'bg-blue-100 text-right'
-                      : msg.role === 'agent'
-                      ? 'bg-gray-100 text-left'
-                      : 'text-center text-sm text-gray-500'
-                  }`}
+                  key={msg.id}
+                  layout
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {msg.content}
+                  {msg.role === 'user' && msg.status === 'failed' && (
+                    <div className="text-red-500 flex items-center gap-1">
+                      <AlertTriangle size={16} />
+                      <button onClick={() => handleRetry(msg)} className="underline text-xs">Reintentar</button>
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-md p-3 rounded-lg ${
+                      msg.role === 'user'
+                        ? 'bg-blue-500 text-white rounded-br-none'
+                        : msg.role === 'agent'
+                        ? 'bg-gray-200 text-gray-800 rounded-bl-none'
+                        : 'w-full text-center text-sm text-gray-500 bg-transparent'
+                    } ${msg.status === 'sending' ? 'opacity-60' : ''}`}
+                  >
+                    {msg.content}
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2">
             <Textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
+              placeholder="Escribe tu mensaje aquí..."
+              rows={1}
+              disabled={mutation.isPending}
+              className="flex-1 resize-none p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
-            <Button type="submit">Enviar</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50">
+              {mutation.isPending ? <RotateCw className="animate-spin" /> : 'Enviar'}
+            </Button>
           </form>
         </CardContent>
       </Card>
