@@ -1,4 +1,3 @@
-// Archivo: LandingChatInteractivo.tsx
 import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -16,24 +15,17 @@ const messageSchema = z.object({
 interface Message {
   role: 'user' | 'agent' | 'status';
   content: string;
-  status?: 'sending' | 'sent';
   timestamp: string;
 }
 
 const LandingChatInteractivo = () => {
-  // Inicio bloque estado inicial y localStorage
   const [message, setMessage] = useState('');
-  const [threadId, setThreadId] = useState<string | null>(() => localStorage.getItem('threadId'));
   const [runId, setRunId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem('chatMessages');
     return saved ? JSON.parse(saved) : [];
   });
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (threadId) localStorage.setItem('threadId', threadId);
-  }, [threadId]);
 
   useEffect(() => {
     localStorage.setItem('chatMessages', JSON.stringify(messages));
@@ -44,14 +36,10 @@ const LandingChatInteractivo = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
-  // Fin bloque estado inicial y localStorage
 
-  // Inicio bloque mutación envío mensaje
   const mutation = useMutation({
-    mutationFn: ({ prompt, threadId }: { prompt: string; threadId?: string }) =>
-      sendChatPrompt(prompt, threadId),
-    onSuccess: ({ threadId, runId }) => {
-      setThreadId(threadId);
+    mutationFn: ({ prompt }: { prompt: string }) => sendChatPrompt(prompt),
+    onSuccess: ({ runId }) => {
       setRunId(runId);
     },
     onError: () => {
@@ -59,19 +47,20 @@ const LandingChatInteractivo = () => {
       setMessages((prev) => prev.slice(0, -2));
     },
   });
-  // Fin bloque mutación envío mensaje
 
-  // Inicio bloque polling respuesta
   useEffect(() => {
-    if (!runId || !threadId) return;
+    if (!runId) return;
 
     const intervalId = setInterval(async () => {
       try {
-        const { message: content } = await getChatStatus(threadId, runId);
+        const { message: content } = await getChatStatus(runId);
 
         setMessages((prev) => {
-          const updatedMessages = prev.filter(msg => msg.role !== 'status');
-          return [...updatedMessages, { role: 'agent', content, timestamp: new Date().toLocaleTimeString() }];
+          const updatedMessages = prev.filter((msg) => msg.role !== 'status');
+          return [
+            ...updatedMessages,
+            { role: 'agent', content, timestamp: new Date().toLocaleTimeString() },
+          ];
         });
 
         setRunId(null);
@@ -82,10 +71,8 @@ const LandingChatInteractivo = () => {
     }, 2000);
 
     return () => clearInterval(intervalId);
-  }, [runId, threadId]);
-  // Fin bloque polling respuesta
+  }, [runId]);
 
-  // Inicio bloque manejar envío mensaje
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
 
@@ -101,11 +88,11 @@ const LandingChatInteractivo = () => {
 
     setMessages((prev) => [
       ...prev,
-      { role: 'user', content: parsed.data.message, status: 'sent', timestamp: new Date().toLocaleTimeString() },
+      { role: 'user', content: parsed.data.message, timestamp: new Date().toLocaleTimeString() },
       { role: 'status', content: 'Enviando...', timestamp: new Date().toLocaleTimeString() },
     ]);
 
-    mutation.mutate({ prompt: parsed.data.message, threadId: threadId || undefined });
+    mutation.mutate({ prompt: parsed.data.message });
     setMessage('');
   };
 
@@ -115,9 +102,7 @@ const LandingChatInteractivo = () => {
       handleSubmit();
     }
   };
-  // Fin bloque manejar envío mensaje
 
-  // Inicio bloque UI componente
   return (
     <motion.div className="mx-auto max-w-4xl px-6 py-8 font-sans text-gray-700 bg-[#FAFAFA]">
       <Card className="shadow-2xl rounded-2xl">
@@ -128,7 +113,13 @@ const LandingChatInteractivo = () => {
           <div ref={chatContainerRef} className="max-h-72 overflow-y-auto">
             <AnimatePresence>
               {messages.map((msg, index) => (
-                <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-2 my-2 rounded-xl ${msg.role === 'user' ? 'bg-blue-100 text-right' : msg.role === 'agent' ? 'bg-gray-100 text-left' : 'text-center text-sm text-gray-500'}`}>
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className={`p-2 my-2 rounded-xl ${msg.role === 'user' ? 'bg-blue-100 text-right' : msg.role === 'agent' ? 'bg-gray-100 text-left' : 'text-center text-sm text-gray-500'}`}
+                >
                   {msg.content}
                 </motion.div>
               ))}
@@ -142,7 +133,6 @@ const LandingChatInteractivo = () => {
       </Card>
     </motion.div>
   );
-  // Fin bloque UI componente
 };
 
 export default LandingChatInteractivo;

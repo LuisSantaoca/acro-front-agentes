@@ -1,50 +1,41 @@
-import { z } from 'zod';
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
 
-// Esquema adaptado al nuevo formato inicial de respuesta del backend
-const initialResponseSchema = z.object({
-  message: z.string(),
-  threadId: z.string(),
-  runId: z.string(),
+dotenv.config({ path: '/var/www/agentes/config/backend.env' });
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Esquema para obtener el resultado final del asistente
-const finalResponseSchema = z.object({
-  message: z.string(),
-});
+const assistantId = process.env.OPENAI_ASSISTANT_ID!;
+const threadId = process.env.OPENAI_THREAD_ID!;
 
-// Tipos derivados claramente del esquema
-type InitialChatResponse = z.infer<typeof initialResponseSchema>;
-type FinalChatResponse = z.infer<typeof finalResponseSchema>;
-
-const API_BASE = "https://api.elathia.ai";
-
-
-
-// Función para enviar prompts al backend
-export async function sendChatPrompt(prompt: string, threadId?: string): Promise<InitialChatResponse> {
-  const response = await fetch(`${API_BASE}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, threadId }),
+export async function sendChatPrompt(prompt: string) {
+  await openai.beta.threads.messages.create(threadId, {
+    role: 'user',
+    content: prompt,
   });
 
-  if (!response.ok) {
-    throw new Error('Error al enviar el mensaje al servidor');
-  }
+  const run = await openai.beta.threads.runs.create(threadId, {
+    assistant_id: assistantId,
+  });
 
-  const data = await response.json();
-  return initialResponseSchema.parse(data);
+  return {
+    threadId,
+    runId: run.id,
+  };
 }
 
-// Función para consultar estado del chat (polling)
-export async function getChatStatus(threadId: string, runId: string): Promise<FinalChatResponse> {
-  const response = await fetch(`${API_BASE}/chat/status/${threadId}/${runId}`);
+export async function getChatStatus(runId: string) {
+  const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
 
-  if (!response.ok) {
-    throw new Error('Error al obtener estado del chat');
+  if (runStatus.status === 'completed') {
+    const messages = await openai.beta.threads.messages.list(threadId);
+    const latestMessage = messages.data.find(msg => msg.role === 'assistant');
+
+    return { message: latestMessage?.content[0].text.value || 'Sin respuesta clara' };
   }
 
-  const data = await response.json();
-  return finalResponseSchema.parse(data);
+  throw new Error('El run aún no ha finalizado');
 }
 
