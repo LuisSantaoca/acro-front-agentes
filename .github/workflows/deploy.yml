@@ -56,7 +56,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
             'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
 
-      # Deploy Backend
+      # Deploy Backend (excluyendo archivo .env explícitamente)
       - name: 🚀 Deploy Backend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'

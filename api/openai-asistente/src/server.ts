@@ -4,7 +4,6 @@ import cors from 'cors';
 import path from 'path';
 import fetch from 'node-fetch';
 
-// Cambia ruta explícitamente al archivo seguro .env
 dotenv.config({ path: '/var/www/agentes/config/backend.env' });
 
 const PORT = Number(process.env.PORT || 3001);
@@ -29,29 +28,38 @@ const apiClient = {
     'Authorization': `Bearer ${OPENAI_API_KEY}`,
     'OpenAI-Beta': 'assistants=v2',
   },
+
   async request<T>(endpoint: string, options: any = {}): Promise<T> {
     const response = await fetch(`https://api.openai.com/v1${endpoint}`, {
       headers: this.headers, ...options
     });
+
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({ message: 'Error desconocido' }));
       throw new Error(`Error OpenAI: ${errorBody.error?.message || errorBody.message}`);
     }
+
     return response.json();
   },
+
   post<T>(endpoint: string, body: any): Promise<T> {
     return this.request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) });
   },
+
   get<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint);
   }
 };
 
 const openAIService = {
-  createMessage: async (threadId: string, content: string) => {
+  async createMessage(threadId: string, content: string) {
     await apiClient.post(`/threads/${threadId}/messages`, { role: 'user', content });
   },
-  createRun: (threadId: string) => apiClient.post<IRun>(`/threads/${threadId}/runs`, { assistant_id: OPENAI_ASSISTANT_ID }),
+
+  async createRun(threadId: string) {
+    return apiClient.post<IRun>(`/threads/${threadId}/runs`, { assistant_id: OPENAI_ASSISTANT_ID });
+  },
+
   async getFinalResponse(threadId: string, runId: string): Promise<string> {
     let runStatus: IRun;
     do {
