@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '/var/www/agentes/config/backend.env' });
+
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

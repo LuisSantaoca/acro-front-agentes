@@ -61,7 +61,7 @@ jobs:
       - name: 🚀 Deploy Backend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" api/openai-asistente/ santaoca@64.23.198.218:/var/www/agentes/backend
+          rsync -avz --delete --exclude='.env' -e "ssh -o StrictHostKeyChecking=no" api/openai-asistente/ santaoca@64.23.198.218:/var/www/agentes/backend
 
       # Backup Frontend
       - name: 📦 Backup Previous Frontend Build
@@ -87,3 +87,4 @@ jobs:
       - name: ❌ Notify Failure
         if: failure()
         run: echo "❌ Deploy failed"
+
