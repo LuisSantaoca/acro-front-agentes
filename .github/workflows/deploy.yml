@@ -1,3 +1,5 @@
+# Archivo: .github/workflows/deploy.yml
+
 name: Deploy Frontend y Backend to elathia_ai
 
 on:
@@ -32,16 +34,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
-      # Backend: instalación dependencias
+      # Backend: instalación dependencias y build
       - name: 🧪 Install Backend Dependencies
-        working-directory: ./api/openai-asistente
+        working-directory: ./backend
         run: pnpm install --frozen-lockfile
 
-      # Frontend: instalación dependencias
+      - name: 🛠️ Build Backend
+        working-directory: ./backend
+        run: pnpm run build
+
+      # Frontend: instalación dependencias y build
       - name: 🧪 Install Frontend Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Frontend: Build Project
       - name: 🛠️ Build Frontend
         run: pnpm run build
 
@@ -56,11 +61,15 @@ jobs:
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
             'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
 
-      # Deploy Backend (excluyendo archivo .env explícitamente)
+      # Deploy Backend (solo archivos necesarios y dist/, sin .env)
       - name: 🚀 Deploy Backend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'
-          rsync -avz --delete --exclude='.env' -e "ssh -o StrictHostKeyChecking=no" api/openai-asistente/ santaoca@64.23.198.218:/var/www/agentes/backend
+          rsync -avz --delete \
+            --exclude='.env' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            backend/dist/ backend/package.json backend/pnpm-lock.yaml \
+            santaoca@64.23.198.218:/var/www/agentes/backend
 
       # Backup Frontend
       - name: 📦 Backup Previous Frontend Build
@@ -87,4 +96,3 @@ jobs:
       - name: ❌ Notify Failure
         if: failure()
         run: echo "❌ Deploy failed"
-
