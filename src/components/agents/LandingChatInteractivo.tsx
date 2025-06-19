@@ -21,7 +21,9 @@ interface Message {
 const LandingChatInteractivo = () => {
   const [message, setMessage] = useState('');
   const [runId, setRunId] = useState<string | null>(null);
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const [threadId, setThreadId] = useState<string | null>(() => {
+    return localStorage.getItem('chatThreadId');
+  });
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem('chatMessages');
     return saved ? JSON.parse(saved) : [];
@@ -32,6 +34,14 @@ const LandingChatInteractivo = () => {
   useEffect(() => {
     localStorage.setItem('chatMessages', JSON.stringify(messages));
   }, [messages]);
+
+  useEffect(() => {
+    if (threadId) {
+      localStorage.setItem('chatThreadId', threadId);
+    } else {
+      localStorage.removeItem('chatThreadId');
+    }
+  }, [threadId]);
 
   useEffect(() => {
     chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
@@ -134,7 +144,7 @@ const LandingChatInteractivo = () => {
               onChange={e => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <Button type="submit" className="bg-blue-500">Enviarxxxx</Button>
+            <Button type="submit" className="bg-blue-500">Enviar</Button>
           </form>
         </CardContent>
       </Card>
@@ -143,4 +153,3 @@ const LandingChatInteractivo = () => {
 };
 
 export default LandingChatInteractivo;
-

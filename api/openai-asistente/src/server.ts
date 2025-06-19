@@ -1,15 +1,14 @@
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import path from 'path';
 import fetch from 'node-fetch';
 
 dotenv.config({ path: '/var/www/agentes/config/backend.env' });
 
 const PORT = Number(process.env.PORT || 3001);
-const { OPENAI_API_KEY, OPENAI_ASSISTANT_ID, OPENAI_THREAD_ID } = process.env;
+const { OPENAI_API_KEY, OPENAI_ASSISTANT_ID } = process.env;
 
-if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID || !OPENAI_THREAD_ID) {
+if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID) {
   console.error('❌ Error crítico: variables faltantes en backend.env.');
   process.exit(1);
 }
@@ -31,7 +30,8 @@ const apiClient = {
 
   async request<T>(endpoint: string, options: any = {}): Promise<T> {
     const response = await fetch(`https://api.openai.com/v1${endpoint}`, {
-      headers: this.headers, ...options
+      headers: this.headers,
+      ...options
     });
 
     if (!response.ok) {
@@ -52,6 +52,11 @@ const apiClient = {
 };
 
 const openAIService = {
+  async createThread(): Promise<string> {
+    const response = await apiClient.post<{ id: string }>('/threads', {});
+    return response.id;
+  },
+
   async createMessage(threadId: string, content: string) {
     await apiClient.post(`/threads/${threadId}/messages`, { role: 'user', content });
   },
@@ -92,13 +97,20 @@ app.get('/', (_req, res) => res.send('🚀 Backend OpenAI activo.'));
 
 app.post('/chat', async (req, res, next) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, threadId } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt requerido.' });
 
-    await openAIService.createMessage(OPENAI_THREAD_ID, prompt);
-    const run = await openAIService.createRun(OPENAI_THREAD_ID);
+    // Genera nuevo threadId si no se proporciona
+    const actualThreadId = threadId || await openAIService.createThread();
 
-    res.status(202).json({ message: "Solicitud aceptada", threadId: OPENAI_THREAD_ID, runId: run.id });
+    await openAIService.createMessage(actualThreadId, prompt);
+    const run = await openAIService.createRun(actualThreadId);
+
+    res.status(202).json({
+      message: "Solicitud aceptada",
+      threadId: actualThreadId,
+      runId: run.id
+    });
   } catch (error) {
     next(error);
   }
@@ -119,4 +131,5 @@ app.use((error: Error, _req, res, _next) => {
   res.status(500).json({ error: error.message });
 });
 
-app.listen(PORT, () => console.log(`✅ Servidor en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Servidor escuchando en puerto ${PORT}`));
+
