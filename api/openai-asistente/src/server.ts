@@ -49,7 +49,7 @@ app.post('/chat', async (req, res) => {
       body: JSON.stringify({ assistant_id: OPENAI_ASSISTANT_ID }),
     });
 
-    const runData = await runResponse.json() as { id: string };
+    const runData: any = await runResponse.json();
     res.status(202).json({ runId: runData.id });
   } catch (error) {
     console.error('❌ Error en /chat:', error);
@@ -67,13 +67,13 @@ app.get('/chat/status/:runId', async (req, res) => {
       'OpenAI-Beta': 'assistants=v2',
     };
 
-    let runStatus: { status: string };
+    let runStatus: any;
     let attempts = 0;
 
     do {
       await new Promise(r => setTimeout(r, 1500));
       const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
-      runStatus = await statusResponse.json() as { status: string };
+      runStatus = await statusResponse.json();
       attempts++;
     } while (['queued', 'in_progress'].includes(runStatus.status) && attempts < 10);
 
@@ -83,15 +83,9 @@ app.get('/chat/status/:runId', async (req, res) => {
     }
 
     const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, { headers });
-    const messagesData = await messagesResponse.json() as {
-      data: Array<{
-        run_id: string;
-        role: string;
-        content: Array<{ text: { value: string } }>;
-      }>;
-    };
+    const messagesData: any = await messagesResponse.json();
 
-    const assistantMessage = messagesData.data.find((m) => m.run_id === runId && m.role === 'assistant');
+    const assistantMessage = messagesData.data.find((m: any) => m.run_id === runId && m.role === 'assistant');
 
     if (!assistantMessage) {
       res.status(202).json({ message: null });
@@ -125,15 +119,7 @@ app.get('/diagnostico/run/:runId', async (req, res) => {
       return;
     }
 
-    const runData = await response.json() as {
-      id: string;
-      status: string;
-      created_at: number;
-      completed_at: number;
-      thread_id: string;
-      assistant_id: string;
-    };
-
+    const runData: any = await response.json();
     res.json(runData);
   } catch (error) {
     console.error('❌ Error diagnóstico:', error);
