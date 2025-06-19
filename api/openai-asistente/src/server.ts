@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import fetch from 'node-fetch';
+import { z } from 'zod';
 
 dotenv.config({ path: '/var/www/agentes/config/backend.env' });
 
@@ -22,7 +23,27 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.get('/', (_req: Request, res: Response) => res.send('🚀 Backend OpenAI activo.'));
+app.get('/', (_req: Request, res: Response) => {
+  res.send('🚀 Backend OpenAI activo.');
+});
+
+const runDataSchema = z.object({
+  id: z.string(),
+});
+
+const runStatusSchema = z.object({
+  status: z.string(),
+});
+
+const messagesDataSchema = z.object({
+  data: z.array(z.object({
+    run_id: z.string(),
+    role: z.string(),
+    content: z.array(z.object({
+      text: z.object({ value: z.string() })
+    }))
+  }))
+});
 
 app.post('/chat', async (req: Request, res: Response) => {
   try {
@@ -47,9 +68,8 @@ app.post('/chat', async (req: Request, res: Response) => {
       body: JSON.stringify({ assistant_id: OPENAI_ASSISTANT_ID }),
     });
 
-    const runData = await runResponse.json() as { id: string };
+    const runData = runDataSchema.parse(await runResponse.json());
     res.status(202).json({ runId: runData.id });
-
   } catch (error) {
     console.error('❌ Error en /chat:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
@@ -66,13 +86,13 @@ app.get('/chat/status/:runId', async (req: Request<{ runId: string }>, res: Resp
       'OpenAI-Beta': 'assistants=v2',
     };
 
-    let runStatus: any;
+    let runStatus;
     let attempts = 0;
 
     do {
       await new Promise(r => setTimeout(r, 1500));
       const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
-      runStatus = await statusResponse.json();
+      runStatus = runStatusSchema.parse(await statusResponse.json());
       attempts++;
     } while (['queued', 'in_progress'].includes(runStatus.status) && attempts < 10);
 
@@ -81,9 +101,7 @@ app.get('/chat/status/:runId', async (req: Request<{ runId: string }>, res: Resp
     }
 
     const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, { headers });
-    const messagesData = await messagesResponse.json() as {
-      data: Array<{ role: string; run_id: string; content: Array<{ text: { value: string } }> }>
-    };
+    const messagesData = messagesDataSchema.parse(await messagesResponse.json());
 
     const assistantMessage = messagesData.data.find(
       m => m.run_id === runId && m.role === 'assistant'
@@ -94,7 +112,6 @@ app.get('/chat/status/:runId', async (req: Request<{ runId: string }>, res: Resp
     }
 
     res.json({ message: assistantMessage.content[0].text.value });
-
   } catch (error) {
     console.error('❌ Error en /chat/status:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
@@ -120,23 +137,8 @@ app.get('/diagnostico/run/:runId', async (req: Request<{ runId: string }>, res: 
       return res.status(response.status).json({ error: 'No se encontró el runId o no es válido.' });
     }
 
-    const runData = await response.json() as {
-      id: string;
-      status: string;
-      created_at: number;
-      completed_at: number;
-      thread_id: string;
-      assistant_id: string;
-    };
-
-    return res.json({
-      id: runData.id,
-      status: runData.status,
-      created_at: runData.created_at,
-      completed_at: runData.completed_at,
-      thread_id: runData.thread_id,
-      assistant_id: runData.assistant_id,
-    });
+    const runData = await response.json();
+    return res.json(runData);
   } catch (error) {
     console.error('❌ Error diagnóstico:', error);
     return res.status(500).json({ error: 'Error al verificar el runId.' });
