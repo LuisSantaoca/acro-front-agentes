@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import fetch from 'node-fetch';
@@ -22,9 +22,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.get('/', (_req, res) => res.send('🚀 Backend OpenAI activo.'));
+app.get('/', (_req: Request, res: Response) => res.send('🚀 Backend OpenAI activo.'));
 
-app.post('/chat', async (req, res) => {
+app.post('/chat', async (req: Request, res: Response) => {
   try {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt requerido.' });
@@ -35,21 +35,19 @@ app.post('/chat', async (req, res) => {
       'OpenAI-Beta': 'assistants=v2',
     };
 
-    // Crear mensaje del usuario en el hilo
     await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ role: 'user', content: prompt }),
     });
 
-    // Iniciar ejecución del assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ assistant_id: OPENAI_ASSISTANT_ID }),
     });
 
-    const runData = await runResponse.json();
+    const runData = await runResponse.json() as { id: string };
     res.status(202).json({ runId: runData.id });
 
   } catch (error) {
@@ -58,7 +56,7 @@ app.post('/chat', async (req, res) => {
   }
 });
 
-app.get('/chat/status/:runId', async (req, res) => {
+app.get('/chat/status/:runId', async (req: Request<{ runId: string }>, res: Response) => {
   try {
     const { runId } = req.params;
 
@@ -68,7 +66,7 @@ app.get('/chat/status/:runId', async (req, res) => {
       'OpenAI-Beta': 'assistants=v2',
     };
 
-    let runStatus;
+    let runStatus: any;
     let attempts = 0;
 
     do {
@@ -83,9 +81,13 @@ app.get('/chat/status/:runId', async (req, res) => {
     }
 
     const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, { headers });
-    const messagesData = await messagesResponse.json();
+    const messagesData = await messagesResponse.json() as {
+      data: Array<{ role: string; run_id: string; content: Array<{ text: { value: string } }> }>
+    };
 
-    const assistantMessage = messagesData.data.find(m => m.run_id === runId && m.role === 'assistant');
+    const assistantMessage = messagesData.data.find(
+      m => m.run_id === runId && m.role === 'assistant'
+    );
 
     if (!assistantMessage) {
       return res.status(202).json({ message: null });
@@ -99,8 +101,7 @@ app.get('/chat/status/:runId', async (req, res) => {
   }
 });
 
-// ✅ Ruta de diagnóstico para verificar cualquier runId directamente
-app.get('/diagnostico/run/:runId', async (req, res) => {
+app.get('/diagnostico/run/:runId', async (req: Request<{ runId: string }>, res: Response) => {
   try {
     const { runId } = req.params;
 
@@ -119,7 +120,15 @@ app.get('/diagnostico/run/:runId', async (req, res) => {
       return res.status(response.status).json({ error: 'No se encontró el runId o no es válido.' });
     }
 
-    const runData = await response.json();
+    const runData = await response.json() as {
+      id: string;
+      status: string;
+      created_at: number;
+      completed_at: number;
+      thread_id: string;
+      assistant_id: string;
+    };
+
     return res.json({
       id: runData.id,
       status: runData.status,
