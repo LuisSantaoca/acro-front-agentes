@@ -35,14 +35,14 @@ app.post('/chat', async (req, res) => {
       'OpenAI-Beta': 'assistants=v2',
     };
 
-    // Crear mensaje del usuario en el thread
+    // Crear mensaje del usuario en el hilo
     await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ role: 'user', content: prompt }),
     });
 
-    // Iniciar "run"
+    // Iniciar ejecución del assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs`, {
       method: 'POST',
       headers,
@@ -53,7 +53,7 @@ app.post('/chat', async (req, res) => {
     res.status(202).json({ runId: runData.id });
 
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error en /chat:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
@@ -69,9 +69,8 @@ app.get('/chat/status/:runId', async (req, res) => {
     };
 
     let runStatus;
-
-    // Esperar hasta que el run termine (máximo 3 intentos)
     let attempts = 0;
+
     do {
       await new Promise(r => setTimeout(r, 1500));
       const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
@@ -89,15 +88,49 @@ app.get('/chat/status/:runId', async (req, res) => {
     const assistantMessage = messagesData.data.find(m => m.run_id === runId && m.role === 'assistant');
 
     if (!assistantMessage) {
-      // En vez de 404, responder que aún no está lista
       return res.status(202).json({ message: null });
     }
 
     res.json({ message: assistantMessage.content[0].text.value });
 
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error en /chat/status:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// ✅ Ruta de diagnóstico para verificar cualquier runId directamente
+app.get('/diagnostico/run/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'OpenAI-Beta': 'assistants=v2',
+    };
+
+    const response = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'No se encontró el runId o no es válido.' });
+    }
+
+    const runData = await response.json();
+    return res.json({
+      id: runData.id,
+      status: runData.status,
+      created_at: runData.created_at,
+      completed_at: runData.completed_at,
+      thread_id: runData.thread_id,
+      assistant_id: runData.assistant_id,
+    });
+  } catch (error) {
+    console.error('❌ Error diagnóstico:', error);
+    return res.status(500).json({ error: 'Error al verificar el runId.' });
   }
 });
 
