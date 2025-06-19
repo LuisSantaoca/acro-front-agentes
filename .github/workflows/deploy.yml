@@ -48,7 +48,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'
           rsync -avz --delete \
           --exclude='.env' \
-          -e \"ssh -o StrictHostKeyChecking=no\" \
+          -e "ssh -o StrictHostKeyChecking=no" \
           backend/src backend/package.json backend/pnpm-lock.yaml \
           santaoca@64.23.198.218:/var/www/agentes/backend
 
@@ -67,7 +67,7 @@ jobs:
       - name: 🚀 Deploy Frontend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/frontend'
-          rsync -avz --delete -e \"ssh -o StrictHostKeyChecking=no\" dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ santaoca@64.23.198.218:/var/www/agentes/frontend
 
       # Reiniciar Nginx
       - name: 🔄 Restart Nginx
@@ -77,8 +77,8 @@ jobs:
       # Notificaciones
       - name: ✅ Notify Success
         if: success()
-        run: echo \"✅ Deploy successful\"
+        run: echo "✅ Deploy successful"
 
       - name: ❌ Notify Failure
         if: failure()
-        run: echo \"❌ Deploy failed\"
+        run: echo "❌ Deploy failed"
