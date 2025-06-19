@@ -144,7 +144,7 @@ const LandingChatInteractivo = () => {
               onChange={e => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <Button type="submit" className="bg-blue-500">Enviar</Button>
+            <Button type="submit" className="bg-blue-500">Enviar10</Button>
           </form>
         </CardContent>
       </Card>
