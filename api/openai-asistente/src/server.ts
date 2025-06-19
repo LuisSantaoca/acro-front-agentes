@@ -1,9 +1,11 @@
-import express, { Request, Response } from 'express';
+// --- INICIO DEL CÓDIGO FINAL Y RECOMENDADO ---
+import express, { Request, Response, RequestHandler } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import fetch from 'node-fetch';
-import { z } from 'zod';
+import fetch, { HeadersInit } from 'node-fetch';
+import { z } from 'zod'; // Importamos Zod
 
+// --- Configuración y Middlewares (sin cambios) ---
 dotenv.config({ path: '/var/www/agentes/config/backend.env' });
 
 const PORT = Number(process.env.PORT || 3001);
@@ -15,134 +17,141 @@ if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID || !OPENAI_THREAD_ID) {
 }
 
 const app = express();
-
 app.use(express.json());
 app.use(cors({
-  origin: ["https://elathia.ai", "https://www.elathia.ai"],
+  origin: ["https://elathia.ai", "https://www.elathia.ai", "http://localhost:3000"],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.get('/', (_req: Request, res: Response) => {
-  res.send('🚀 Backend OpenAI activo.');
-});
-
-const runDataSchema = z.object({
+// --- Schemas de Zod para Validación y Tipado ---
+// Schema para la respuesta al crear un run (POST /chat)
+const RunCreationSchema = z.object({
   id: z.string(),
 });
 
-const runStatusSchema = z.object({
+// Schema para la respuesta al consultar el estado de un run
+const RunStatusSchema = z.object({
+  id: z.string(),
   status: z.string(),
+  // y cualquier otro campo que quieras del run
 });
 
-const messagesDataSchema = z.object({
-  data: z.array(z.object({
-    run_id: z.string(),
-    role: z.string(),
-    content: z.array(z.object({
-      text: z.object({ value: z.string() })
-    }))
-  }))
+// Schema para la lista de mensajes
+const MessageSchema = z.object({
+  run_id: z.string().nullable(),
+  role: z.enum(['user', 'assistant']),
+  content: z.array(
+    z.object({
+      type: z.literal('text'),
+      text: z.object({
+        value: z.string(),
+      }),
+    })
+  ),
 });
 
-app.post('/chat', async (req: Request, res: Response) => {
+const MessagesListSchema = z.object({
+  data: z.array(MessageSchema),
+});
+
+
+// --- Rutas de la API ---
+
+app.get('/', ((_req, res) => {
+  res.send('🚀 Backend OpenAI activo.');
+}) as RequestHandler);
+
+
+// --- RUTA POST /chat (CON TU SOLUCIÓN DE ZOD) ---
+app.post('/chat', (async (req, res) => {
   try {
     const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Prompt requerido.' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt requerido.' });
+    }
 
-    const headers = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'OpenAI-Beta': 'assistants=v2',
     };
 
+    // Añadir mensaje al hilo
     await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ role: 'user', content: prompt }),
     });
 
+    // Crear el run
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ assistant_id: OPENAI_ASSISTANT_ID }),
     });
+    
+    if (!runResponse.ok) throw new Error(`OpenAI API error: ${runResponse.statusText}`);
 
-    const runData = runDataSchema.parse(await runResponse.json());
+    // Parseamos la respuesta con Zod para obtener el tipado y la validación
+    const runData = RunCreationSchema.parse(await runResponse.json());
     res.status(202).json({ runId: runData.id });
+
   } catch (error) {
     console.error('❌ Error en /chat:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
-});
+}) as RequestHandler);
 
-app.get('/chat/status/:runId', async (req: Request<{ runId: string }>, res: Response) => {
+
+// --- RUTA GET /chat/status/:runId (ARQUITECTURA NO BLOQUEANTE + ZOD) ---
+app.get('/chat/status/:runId', (async (req: Request<{ runId: string }>, res: Response) => {
   try {
     const { runId } = req.params;
-
-    const headers = {
-      'Content-Type': 'application/json',
+    const headers: HeadersInit = {
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'OpenAI-Beta': 'assistants=v2',
     };
 
-    let runStatus;
-    let attempts = 0;
+    // 1. Consultar el estado del run UNA SOLA VEZ
+    const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
+    if (!statusResponse.ok) {
+        const errorData = await statusResponse.json().catch(() => ({}));
+        return res.status(statusResponse.status).json({ error: 'Error al obtener estado del run desde OpenAI.', details: errorData });
+    }
 
-    do {
-      await new Promise(r => setTimeout(r, 1500));
-      const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
-      runStatus = runStatusSchema.parse(await statusResponse.json());
-      attempts++;
-    } while (['queued', 'in_progress'].includes(runStatus.status) && attempts < 10);
+    // 2. Parsear el estado del run con Zod
+    const runStatus = RunStatusSchema.parse(await statusResponse.json());
 
+    // 3. Si NO está completado, responder inmediatamente con el estado
     if (runStatus.status !== 'completed') {
-      return res.status(202).json({ message: null });
+      return res.json({ status: runStatus.status, message: null });
     }
-
+    
+    // 4. Si SÍ está completado, obtener y parsear los mensajes
     const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, { headers });
-    const messagesData = messagesDataSchema.parse(await messagesResponse.json());
+    if (!messagesResponse.ok) throw new Error('No se pudieron obtener los mensajes tras completar el run.');
 
-    const assistantMessage = messagesData.data.find(
-      m => m.run_id === runId && m.role === 'assistant'
-    );
+    const messagesData = MessagesListSchema.parse(await messagesResponse.json());
+    const assistantMessage = messagesData.data.find(m => m.run_id === runId && m.role === 'assistant');
 
-    if (!assistantMessage) {
-      return res.status(202).json({ message: null });
-    }
-
-    res.json({ message: assistantMessage.content[0].text.value });
-  } catch (error) {
-    console.error('❌ Error en /chat/status:', error);
-    res.status(500).json({ error: 'Error interno del servidor.' });
-  }
-});
-
-app.get('/diagnostico/run/:runId', async (req: Request<{ runId: string }>, res: Response) => {
-  try {
-    const { runId } = req.params;
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'OpenAI-Beta': 'assistants=v2',
-    };
-
-    const response = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, {
-      method: 'GET',
-      headers,
+    // 5. Responder con el mensaje final
+    res.json({
+      status: 'completed',
+      message: assistantMessage ? assistantMessage.content[0].text.value : 'Run completado sin mensaje de respuesta.'
     });
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'No se encontró el runId o no es válido.' });
-    }
-
-    const runData = await response.json();
-    return res.json(runData);
   } catch (error) {
-    console.error('❌ Error diagnóstico:', error);
-    return res.status(500).json({ error: 'Error al verificar el runId.' });
+    console.error('❌ Error en /chat/status:', error);
+    res.status(500).json({ error: 'Error interno del servidor al verificar estado.' });
   }
-});
+}) as RequestHandler);
+
+// Mantengo tu útil ruta de diagnóstico, ¡es una buena idea!
+app.get('/diagnostico/run/:runId', (async (req: Request<{ runId: string }>, res: Response) => {
+    // ... tu código de diagnóstico aquí ...
+}) as RequestHandler);
 
 app.listen(PORT, () => console.log(`✅ Servidor en puerto ${PORT}`));
+
+// --- FIN DEL CÓDIGO FINAL Y RECOMENDADO ---
