@@ -1,144 +1,64 @@
-// Archivo: src/components/LandingChatInteractivo.tsx
-
-import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { z } from 'zod';
 import { sendChatPrompt, getChatStatus } from '@/lib/openaiChatService';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-const messageSchema = z.object({
-  message: z.string().min(1, 'Por favor escribe un mensaje antes de enviar.'),
-});
-
-interface Message {
-  role: 'user' | 'agent' | 'status';
-  content: string;
-  timestamp: string;
-}
-
-const LandingChatInteractivo = () => {
-  const [message, setMessage] = useState('');
-  const [runId, setRunId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('chatMessages');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    localStorage.setItem('chatMessages', JSON.stringify(messages));
-  }, [messages]);
-
-  useEffect(() => {
-    chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+const OpenAIChatSimple = () => {
+  const [prompt, setPrompt] = useState('');
+  const [response, setResponse] = useState('');
 
   const mutation = useMutation({
-    mutationFn: ({ prompt }: { prompt: string }) => sendChatPrompt(prompt),
-    onSuccess: ({ runId }) => {
-      setRunId(runId);
+    mutationFn: async (prompt: string) => {
+      const { runId } = await sendChatPrompt(prompt);
+      
+      let finalResponse;
+      do {
+        await new Promise(r => setTimeout(r, 2000));
+        finalResponse = await getChatStatus(runId);
+      } while (!finalResponse.message);
+
+      return finalResponse.message;
     },
-    onError: () => {
-      toast.error('No se pudo enviar el mensaje.');
-      setMessages(prev => prev.slice(0, -2));
-    },
+    onSuccess: (message) => setResponse(message),
+    onError: () => toast.error('Error al procesar el mensaje.'),
   });
 
-  useEffect(() => {
-    if (!runId) return;
-
-    const intervalId = setInterval(async () => {
-      try {
-        const response = await getChatStatus(runId);
-        if (response && response.message) {
-          setMessages(prev => [
-            ...prev.filter(msg => msg.role !== 'status'),
-            { role: 'agent', content: response.message, timestamp: new Date().toLocaleTimeString() },
-          ]);
-          clearInterval(intervalId);
-          setRunId(null);
-        }
-      } catch (error) {
-        toast.error('Error al obtener respuesta del servidor.');
-        clearInterval(intervalId);
-      }
-    }, 2000);
-
-    return () => clearInterval(intervalId);
-  }, [runId]);
-
-  const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
-
-    const parsed = messageSchema.safeParse({ message });
-
-    if (!parsed.success) {
-      toast.error(parsed.error.errors[0].message);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!prompt.trim()) {
+      toast.error('Por favor escribe un mensaje.');
       return;
     }
-
-    setMessages(prev => [
-      ...prev,
-      { role: 'user', content: parsed.data.message, timestamp: new Date().toLocaleTimeString() },
-      { role: 'status', content: 'Enviando...', timestamp: new Date().toLocaleTimeString() },
-    ]);
-
-    mutation.mutate({ prompt: parsed.data.message });
-    setMessage('');
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
+    mutation.mutate(prompt);
   };
 
   return (
-    <motion.div className="mx-auto max-w-4xl px-6 py-8 font-sans text-gray-700 bg-[#FAFAFA]">
-      <Card className="shadow-2xl rounded-2xl">
-        <CardHeader className="bg-gradient-to-r from-[#4F46E5] to-[#6366F1] rounded-t-2xl">
-          <CardTitle className="text-white">Chat Interactivo ACRO</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div ref={chatContainerRef} className="max-h-72 overflow-y-auto">
-            <AnimatePresence>
-              {messages.map((msg, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className={`p-2 my-2 rounded-xl ${
-                    msg.role === 'user'
-                      ? 'bg-blue-100 text-right'
-                      : msg.role === 'agent'
-                      ? 'bg-gray-100 text-left'
-                      : 'text-center text-sm text-gray-500'
-                  }`}
-                >
-                  {msg.content}
-                </motion.div>
-              ))}
-            </AnimatePresence>
+    <Card className="mx-auto max-w-xl mt-10 shadow-lg">
+      <CardHeader className="bg-blue-500 text-white">
+        <CardTitle>Chat Simple con OpenAI</CardTitle>
+      </CardHeader>
+      <CardContent className="p-4">
+        <form onSubmit={handleSubmit}>
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Escribe tu mensaje..."
+            className="mb-4"
+          />
+          <Button type="submit" className="w-full">Enviar</Button>
+        </form>
+        {response && (
+          <div className="mt-4 p-4 bg-gray-100 rounded">
+            <strong>Respuesta:</strong>
+            <p>{response}</p>
           </div>
-          <form onSubmit={handleSubmit}>
-            <Textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <Button type="submit" className="bg-blue-500">Enviar</Button>
-          </form>
-        </CardContent>
-      </Card>
-    </motion.div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
-export default LandingChatInteractivo;
+export default OpenAIChatSimple;
