@@ -6,10 +6,13 @@ import fetch from 'node-fetch';
 dotenv.config({ path: '/var/www/agentes/config/backend.env' });
 
 const PORT = Number(process.env.PORT || 3001);
-const { OPENAI_API_KEY, OPENAI_ASSISTANT_ID } = process.env;
 
-if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID) {
-  console.error('❌ Error crítico: variables faltantes en backend.env.');
+// CAMBIO 1: Se vuelve a incluir OPENAI_THREAD_ID desde las variables de entorno.
+const { OPENAI_API_KEY, OPENAI_ASSISTANT_ID, OPENAI_THREAD_ID } = process.env;
+
+// CAMBIO 2: Se añade la validación para asegurarse de que OPENAI_THREAD_ID exista.
+if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID || !OPENAI_THREAD_ID) {
+  console.error('❌ Error crítico: variables OPENAI_API_KEY, OPENAI_ASSISTANT_ID o OPENAI_THREAD_ID faltantes en backend.env.');
   process.exit(1);
 }
 
@@ -52,10 +55,7 @@ const apiClient = {
 };
 
 const openAIService = {
-  async createThread(): Promise<string> {
-    const response = await apiClient.post<{ id: string }>('/threads', {});
-    return response.id;
-  },
+  // CAMBIO 3: La función `createThread` ya no es necesaria y se ha eliminado.
 
   async createMessage(threadId: string, content: string) {
     await apiClient.post(`/threads/${threadId}/messages`, { role: 'user', content });
@@ -95,20 +95,21 @@ app.use(cors({
 
 app.get('/', (_req, res) => res.send('🚀 Backend OpenAI activo.'));
 
+// CAMBIO 4: Lógica del endpoint `/chat` simplificada para usar siempre el hilo estático.
 app.post('/chat', async (req, res, next) => {
   try {
-    const { prompt, threadId } = req.body;
+    // Ya no se espera un `threadId` del cliente, solo el `prompt`.
+    const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt requerido.' });
 
-    // Genera nuevo threadId si no se proporciona
-    const actualThreadId = threadId || await openAIService.createThread();
+    // Se utiliza siempre la constante OPENAI_THREAD_ID.
+    await openAIService.createMessage(OPENAI_THREAD_ID, prompt);
+    const run = await openAIService.createRun(OPENAI_THREAD_ID);
 
-    await openAIService.createMessage(actualThreadId, prompt);
-    const run = await openAIService.createRun(actualThreadId);
-
+    // Se devuelve siempre el mismo OPENAI_THREAD_ID al cliente.
     res.status(202).json({
       message: "Solicitud aceptada",
-      threadId: actualThreadId,
+      threadId: OPENAI_THREAD_ID,
       runId: run.id
     });
   } catch (error) {
@@ -132,4 +133,3 @@ app.use((error: Error, _req, res, _next) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en puerto ${PORT}`));
-
