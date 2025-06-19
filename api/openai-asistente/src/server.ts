@@ -13,71 +13,6 @@ if (!OPENAI_API_KEY || !OPENAI_ASSISTANT_ID || !OPENAI_THREAD_ID) {
   process.exit(1);
 }
 
-interface IRun { id: string; status: string; }
-interface IMessage {
-  id: string;
-  run_id?: string;
-  role: string;
-  content: { type: string; text: { value: string } }[];
-}
-
-const apiClient = {
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-    'OpenAI-Beta': 'assistants=v2',
-  },
-
-  async request<T>(endpoint: string, options: any = {}): Promise<T> {
-    const response = await fetch(`https://api.openai.com/v1${endpoint}`, {
-      headers: this.headers, ...options
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({ message: 'Error desconocido' }));
-      throw new Error(`Error OpenAI: ${errorBody.error?.message || errorBody.message}`);
-    }
-
-    return response.json();
-  },
-
-  post<T>(endpoint: string, body: any): Promise<T> {
-    return this.request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) });
-  },
-
-  get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint);
-  }
-};
-
-const openAIService = {
-  async createMessage(content: string) {
-    await apiClient.post(`/threads/${OPENAI_THREAD_ID}/messages`, { role: 'user', content });
-  },
-
-  async createRun() {
-    return apiClient.post<IRun>(`/threads/${OPENAI_THREAD_ID}/runs`, { assistant_id: OPENAI_ASSISTANT_ID });
-  },
-
-  async getFinalResponse(runId: string): Promise<string> {
-    let runStatus: IRun;
-    do {
-      await new Promise(r => setTimeout(r, 1500));
-      runStatus = await apiClient.get<IRun>(`/threads/${OPENAI_THREAD_ID}/runs/${runId}`);
-    } while (['queued', 'in_progress'].includes(runStatus.status));
-
-    if (runStatus.status !== 'completed') {
-      throw new Error(`Run finalizó en estado inesperado: ${runStatus.status}`);
-    }
-
-    const messages = await apiClient.get<{ data: IMessage[] }>(`/threads/${OPENAI_THREAD_ID}/messages`);
-    const assistantMessage = messages.data.find(m => m.run_id === runId && m.role === 'assistant');
-    if (!assistantMessage) throw new Error('Sin respuesta del asistente.');
-
-    return assistantMessage.content[0].text.value;
-  },
-};
-
 const app = express();
 
 app.use(express.json());
@@ -89,33 +24,74 @@ app.use(cors({
 
 app.get('/', (_req, res) => res.send('🚀 Backend OpenAI activo.'));
 
-app.post('/chat', async (req, res, next) => {
+app.post('/chat', async (req, res) => {
   try {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt requerido.' });
 
-    await openAIService.createMessage(prompt);
-    const run = await openAIService.createRun();
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'OpenAI-Beta': 'assistants=v2',
+    };
 
-    res.status(202).json({ message: "Solicitud aceptada", threadId: OPENAI_THREAD_ID, runId: run.id });
+    await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ role: 'user', content: prompt }),
+    });
+
+    const runResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ assistant_id: OPENAI_ASSISTANT_ID }),
+    });
+
+    const runData = await runResponse.json();
+
+    res.status(202).json({ runId: runData.id });
+
   } catch (error) {
-    next(error);
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
 
-app.get('/chat/status/:runId', async (req, res, next) => {
+app.get('/chat/status/:runId', async (req, res) => {
   try {
     const { runId } = req.params;
-    const responseText = await openAIService.getFinalResponse(runId);
-    res.json({ message: responseText });
-  } catch (error) {
-    next(error);
-  }
-});
 
-app.use((error: Error, _req, res, _next) => {
-  console.error('❌ Error:', error.message);
-  res.status(500).json({ error: error.message });
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'OpenAI-Beta': 'assistants=v2',
+    };
+
+    let runStatus;
+
+    do {
+      await new Promise(r => setTimeout(r, 1500));
+      const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
+      runStatus = await statusResponse.json();
+    } while (['queued', 'in_progress'].includes(runStatus.status));
+
+    if (runStatus.status !== 'completed') {
+      return res.status(500).json({ error: `Run finalizó en estado inesperado: ${runStatus.status}` });
+    }
+
+    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, { headers });
+    const messagesData = await messagesResponse.json();
+
+    const assistantMessage = messagesData.data.find(m => m.run_id === runId && m.role === 'assistant');
+
+    if (!assistantMessage) return res.status(404).json({ error: 'Sin respuesta del asistente.' });
+
+    res.json({ message: assistantMessage.content[0].text.value });
+
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
 });
 
 app.listen(PORT, () => console.log(`✅ Servidor en puerto ${PORT}`));
