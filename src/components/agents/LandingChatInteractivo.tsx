@@ -1,3 +1,5 @@
+// Archivo: src/components/LandingChatInteractivo.tsx
+
 import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -21,9 +23,6 @@ interface Message {
 const LandingChatInteractivo = () => {
   const [message, setMessage] = useState('');
   const [runId, setRunId] = useState<string | null>(null);
-  const [threadId, setThreadId] = useState<string | null>(() => {
-    return localStorage.getItem('chatThreadId');
-  });
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem('chatMessages');
     return saved ? JSON.parse(saved) : [];
@@ -36,22 +35,13 @@ const LandingChatInteractivo = () => {
   }, [messages]);
 
   useEffect(() => {
-    if (threadId) {
-      localStorage.setItem('chatThreadId', threadId);
-    } else {
-      localStorage.removeItem('chatThreadId');
-    }
-  }, [threadId]);
-
-  useEffect(() => {
     chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   const mutation = useMutation({
-    mutationFn: ({ prompt, threadId }: { prompt: string; threadId: string | null }) => sendChatPrompt(prompt, threadId),
-    onSuccess: ({ runId, threadId }) => {
+    mutationFn: ({ prompt }: { prompt: string }) => sendChatPrompt(prompt),
+    onSuccess: ({ runId }) => {
       setRunId(runId);
-      setThreadId(threadId);
     },
     onError: () => {
       toast.error('No se pudo enviar el mensaje.');
@@ -60,11 +50,11 @@ const LandingChatInteractivo = () => {
   });
 
   useEffect(() => {
-    if (!runId || !threadId) return;
+    if (!runId) return;
 
     const intervalId = setInterval(async () => {
       try {
-        const response = await getChatStatus(threadId, runId);
+        const response = await getChatStatus(runId);
         if (response && response.message) {
           setMessages(prev => [
             ...prev.filter(msg => msg.role !== 'status'),
@@ -72,7 +62,6 @@ const LandingChatInteractivo = () => {
           ]);
           clearInterval(intervalId);
           setRunId(null);
-          setThreadId(null);
         }
       } catch (error) {
         toast.error('Error al obtener respuesta del servidor.');
@@ -81,7 +70,7 @@ const LandingChatInteractivo = () => {
     }, 2000);
 
     return () => clearInterval(intervalId);
-  }, [runId, threadId]);
+  }, [runId]);
 
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -99,7 +88,7 @@ const LandingChatInteractivo = () => {
       { role: 'status', content: 'Enviando...', timestamp: new Date().toLocaleTimeString() },
     ]);
 
-    mutation.mutate({ prompt: parsed.data.message, threadId });
+    mutation.mutate({ prompt: parsed.data.message });
     setMessage('');
   };
 
@@ -144,7 +133,7 @@ const LandingChatInteractivo = () => {
               onChange={e => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <Button type="submit" className="bg-blue-500">Enviar10</Button>
+            <Button type="submit" className="bg-blue-500">Enviar</Button>
           </form>
         </CardContent>
       </Card>

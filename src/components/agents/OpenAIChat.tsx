@@ -1,77 +1,46 @@
+// Archivo: src/lib/openaiChatService.ts
 
-import { useState } from 'react'
+import { z } from 'zod';
 
-import { sendChatPrompt } from '@/lib/openaiChatService'
+const initialResponseSchema = z.object({
+  message: z.string(),
+  threadId: z.string(),
+  runId: z.string(),
+});
 
+const finalResponseSchema = z.object({
+  message: z.string(),
+});
 
+type InitialChatResponse = z.infer<typeof initialResponseSchema>;
+type FinalChatResponse = z.infer<typeof finalResponseSchema>;
 
-export default function OpenAIChat() {
+const API_BASE = "https://api.elathia.ai";
 
-  const [prompt, setPrompt] = useState('')
+export async function sendChatPrompt(prompt: string): Promise<InitialChatResponse> {
+  const response = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  });
 
-  const [response, setResponse] = useState('')
-
-
-
-  const handleSend = async () => {
-
-    try {
-
-      const res = await sendChatPrompt(prompt)
-
-      setResponse(res.content)
-
-    } catch (error) {
-
-      setResponse('Error al comunicarse con el servidor.')
-
-    }
-
+  if (!response.ok) {
+    throw new Error('Error al enviar el mensaje al servidor');
   }
 
-
-
-  return (
-
-    <div className="p-4 border rounded-lg shadow">
-
-      <textarea
-
-        value={prompt}
-
-        onChange={(e) => setPrompt(e.target.value)}
-
-        placeholder="Escribe tu mensaje..."
-
-        className="w-full p-2 border rounded mb-2"
-
-      />
-
-      <button
-
-        onClick={handleSend}
-
-        className="px-4 py-2 bg-blue-500 text-white rounded"
-
-      >
-
-        Enviar
-
-      </button>
-
-      {response && (
-
-        <div className="mt-4 p-2 bg-gray-100 rounded">
-
-          Respuesta: {response}
-
-        </div>
-
-      )}
-
-    </div>
-
-  )
-
+  const data = await response.json();
+  return initialResponseSchema.parse(data);
 }
+
+export async function getChatStatus(runId: string): Promise<FinalChatResponse> {
+  const response = await fetch(`${API_BASE}/chat/status/${runId}`);
+
+  if (!response.ok) {
+    throw new Error('Error al obtener estado del chat');
+  }
+
+  const data = await response.json();
+  return finalResponseSchema.parse(data);
+}
+
 
