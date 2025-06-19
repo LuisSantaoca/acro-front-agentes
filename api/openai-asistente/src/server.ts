@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
-import { z } from 'zod';
 
 dotenv.config({ path: '/var/www/agentes/config/backend.env' });
 
@@ -49,7 +48,7 @@ app.post('/chat', async (req, res) => {
       body: JSON.stringify({ assistant_id: OPENAI_ASSISTANT_ID }),
     });
 
-    const runData: any = await runResponse.json();
+    const runData = await runResponse.json() as any;
     res.status(202).json({ runId: runData.id });
   } catch (error) {
     console.error('❌ Error en /chat:', error);
@@ -73,7 +72,7 @@ app.get('/chat/status/:runId', async (req, res) => {
     do {
       await new Promise(r => setTimeout(r, 1500));
       const statusResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/runs/${runId}`, { headers });
-      runStatus = await statusResponse.json();
+      runStatus = await statusResponse.json() as any;
       attempts++;
     } while (['queued', 'in_progress'].includes(runStatus.status) && attempts < 10);
 
@@ -83,7 +82,7 @@ app.get('/chat/status/:runId', async (req, res) => {
     }
 
     const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${OPENAI_THREAD_ID}/messages`, { headers });
-    const messagesData: any = await messagesResponse.json();
+    const messagesData = await messagesResponse.json() as any;
 
     const assistantMessage = messagesData.data.find((m: any) => m.run_id === runId && m.role === 'assistant');
 
@@ -119,7 +118,7 @@ app.get('/diagnostico/run/:runId', async (req, res) => {
       return;
     }
 
-    const runData: any = await response.json();
+    const runData = await response.json() as any;
     res.json(runData);
   } catch (error) {
     console.error('❌ Error diagnóstico:', error);
