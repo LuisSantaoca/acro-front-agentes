@@ -22,18 +22,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-const runDataSchema = z.object({ id: z.string() });
-const runStatusSchema = z.object({ status: z.string() });
-const messagesDataSchema = z.object({
-  data: z.array(z.object({
-    run_id: z.string(),
-    role: z.string(),
-    content: z.array(z.object({
-      text: z.object({ value: z.string() })
-    }))
-  }))
-});
-
 app.get('/', (_req, res) => {
   res.send('🚀 Backend OpenAI activo.');
 });
@@ -103,9 +91,7 @@ app.get('/chat/status/:runId', async (req, res) => {
       }>;
     };
 
-    const assistantMessage = messagesData.data.find(
-      m => m.run_id === runId && m.role === 'assistant'
-    );
+    const assistantMessage = messagesData.data.find((m) => m.run_id === runId && m.role === 'assistant');
 
     if (!assistantMessage) {
       res.status(202).json({ message: null });
@@ -139,7 +125,15 @@ app.get('/diagnostico/run/:runId', async (req, res) => {
       return;
     }
 
-    const runData = await response.json();
+    const runData = await response.json() as {
+      id: string;
+      status: string;
+      created_at: number;
+      completed_at: number;
+      thread_id: string;
+      assistant_id: string;
+    };
+
     res.json(runData);
   } catch (error) {
     console.error('❌ Error diagnóstico:', error);
