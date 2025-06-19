@@ -1,5 +1,3 @@
-# Archivo: .github/workflows/deploy.yml
-
 name: Deploy Frontend y Backend to elathia_ai
 
 on:
@@ -12,72 +10,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v3
         with:
           version: 10.11.0
 
-      - name: 📦 Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
-      - name: 📦 Cache pnpm dependencies
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
-      # Backend: instalación dependencias y build
-      - name: 🧪 Install Backend Dependencies
+      # Backend
+      - name: 🧪 Install Backend
         working-directory: ./backend
         run: pnpm install --frozen-lockfile
 
-      - name: 🛠️ Build Backend
-        working-directory: ./backend
-        run: pnpm run build
+      - name: 📦 Backup Backend
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
+          'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
 
-      # Frontend: instalación dependencias y build
-      - name: 🧪 Install Frontend Dependencies
+      - name: 🚀 Deploy Backend
+        run: |
+          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'
+          rsync -avz --delete \
+          --exclude='.env' \
+          -e "ssh -o StrictHostKeyChecking=no" \
+          backend/src backend/package.json backend/pnpm-lock.yaml \
+          santaoca@64.23.198.218:/var/www/agentes/backend
+
+      # Frontend
+      - name: 🧪 Install Frontend
         run: pnpm install --frozen-lockfile
 
       - name: 🛠️ Build Frontend
         run: pnpm run build
 
-      - name: 🔐 Add SSH Key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
-
-      # Backup Backend
-      - name: 📦 Backup Previous Backend Build
+      - name: 📦 Backup Frontend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
-            'if [ -d /var/www/agentes/backend ]; then mv /var/www/agentes/backend /var/www/agentes/backend_backup_$(date +%Y%m%d%H%M%S); fi'
+          'if [ -d /var/www/agentes/frontend ]; then mv /var/www/agentes/frontend /var/www/agentes/frontend_backup_$(date +%Y%m%d%H%M%S); fi'
 
-      # Deploy Backend (solo archivos necesarios y dist/, sin .env)
-      - name: 🚀 Deploy Backend
-        run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/backend'
-          rsync -avz --delete \
-            --exclude='.env' \
-            -e "ssh -o StrictHostKeyChecking=no" \
-            backend/dist/ backend/package.json backend/pnpm-lock.yaml \
-            santaoca@64.23.198.218:/var/www/agentes/backend
-
-      # Backup Frontend
-      - name: 📦 Backup Previous Frontend Build
-        run: |
-          ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 \
-            'if [ -d /var/www/agentes/frontend ]; then mv /var/www/agentes/frontend /var/www/agentes/frontend_backup_$(date +%Y%m%d%H%M%S); fi'
-
-      # Deploy Frontend
       - name: 🚀 Deploy Frontend
         run: |
           ssh -o StrictHostKeyChecking=no santaoca@64.23.198.218 'mkdir -p /var/www/agentes/frontend'

@@ -63,7 +63,7 @@ const LandingInstitucional = () => {
             {/* PIE DE PÁGINA */}
             <footer className="w-full text-center mt-10 py-6 border-t border-gray-200">
                 <p className="text-sm">
-                    © {new Date().getFullYear()} Elathia. Líderes en IA para agricultura sustentable.
+                    © {new Date().getFullYear()} Elathia.. Líderes en IA para agricultura sustentable.
                 </p>
             </footer>
         </div>
